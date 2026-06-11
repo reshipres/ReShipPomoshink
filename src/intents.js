@@ -77,6 +77,10 @@ export function classifyMessage(message, session = {}) {
     if (topicIntent) return match(topicIntent, 0.9);
   }
 
+  if (messageLooksLikeDeliveryTrackingQuestion(message)) {
+    return match(INTENTS.ORDER_STATUS, 0.94, { hint: extractOrderHint(message) });
+  }
+
   if (looksLikeDeliveryDataPayload(message)) {
     return match(INTENTS.DELIVERY_DATA, 0.96);
   }
@@ -265,6 +269,18 @@ function messageLooksLikeGeneralHelp(message) {
 
 function messageLooksLikeSiteIssue(message) {
   return /(сайт|корзин|оформлен|оформить|оформля|личн(ый|ом).*кабинет|промокод|кнопк).*(не работает|ошибк|не могу|не получается|не дает|не даёт|не открывается|не отображ|не видно|трабл|проблем)|не могу.*(оформить|заказать|положить.*корзин)|ошибка.*(сайт|корзин|оформ|оплат)/i.test(message);
+}
+
+function messageLooksLikeDeliveryTrackingQuestion(message) {
+  const hint = extractOrderHint(message);
+  if (!hint) return false;
+
+  const text = normalizeText(message);
+  const words = text.split(/\s+/).filter(Boolean);
+  const shortCdekLookup = words.length <= 3 && /\b(сдэк|cdek|трек|накладная|накладн)\b/i.test(text);
+
+  return shortCdekLookup
+    || /(что\s+с|где|статус|трек|накладн|движен|обновля|обновит|завис|едет|приед|посылк|заказ|когда|долго)/i.test(message);
 }
 
 function messageLooksLikeCustomOrderRequest(message) {

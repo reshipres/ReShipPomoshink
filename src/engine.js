@@ -167,7 +167,7 @@ function routeDecision(classified, message, context) {
     case INTENTS.ORDER_LOOKUP_FOLLOWUP:
     case INTENTS.ORDER_STATUS:
       if (orderContext) {
-        const lookupDecision = composeOrderLookupDecision(orderContext, classified);
+        const lookupDecision = composeOrderLookupDecision(orderContext, classified, message);
         if (lookupDecision) return lookupDecision;
 
         return answer('order_status', composeOrderStatusAnswer(orderContext), [
@@ -304,7 +304,7 @@ function routeDecision(classified, message, context) {
   }
 }
 
-function composeOrderLookupDecision(orderContext, classified) {
+function composeOrderLookupDecision(orderContext, classified, message) {
   const lookupStatus = orderContext.lookupStatus || orderContext.resultStatus || null;
 
   if (lookupStatus === 'not_found') {
@@ -325,5 +325,23 @@ function composeOrderLookupDecision(orderContext, classified) {
     return handoff('order_status', 'Вижу заказ, но по нему нужна ручная проверка оператора. Передаю контекст, чтобы не пришлось повторять данные.', 'order_requires_operator', 'Заказ требует ручной проверки', orderContext.operatorReason || 'Заказ найден, но требует ручной проверки.');
   }
 
+  if (messageAsksForDeliveryReview(message) || String(orderContext.cdekOrderStatus || '').toUpperCase() === 'INVALID') {
+    const orderLabel = orderContext.crmOrderNumber || orderContext.orderNumber || orderContext.shortId || orderContext.orderId || 'без номера';
+    const track = orderContext.cdekTrackingNumber ? ` Трек CDEK: ${orderContext.cdekTrackingNumber}.` : '';
+
+    return handoff(
+      'order_status',
+      `Вижу заказ #${orderLabel}.${track} Если трек не обновляется или доставка зависла, это нужно проверить вручную. Передаю оператору контекст заказа.`,
+      'order_delivery_review',
+      'Проверка доставки заказа',
+      `Клиент просит проверить движение доставки по заказу #${orderLabel}.${track}`,
+      classified.confidence,
+    );
+  }
+
   return null;
+}
+
+function messageAsksForDeliveryReview(message) {
+  return /(трек|накладн|сдэк|cdek|доставк|посылк|заказ).{0,80}(не\s+обнов|не\s+двига|нет\s+движ|без\s+движ|завис|застрял|долго|проблем|проверь|проверить)|(не\s+обнов|не\s+двига|нет\s+движ|без\s+движ|завис|застрял|долго).{0,80}(трек|накладн|сдэк|cdek|доставк|посылк|заказ)/i.test(message);
 }

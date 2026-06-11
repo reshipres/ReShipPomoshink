@@ -107,6 +107,47 @@ describe('customer-style order lookup conversations', () => {
     assert.match(result.answer, /Трек CDEK: 1234567890/);
   });
 
+  it('does not confuse a CDEK tracking question with delivery data', () => {
+    const result = handleCustomerMessage({
+      message: 'что с сдэк 1234567890',
+      orders,
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'answer');
+    assert.equal(result.systemLookup.status, 'found');
+    assert.match(result.answer, /Нашел заказ #6_L/);
+    assert.doesNotMatch(result.answer, /данные доставки/);
+  });
+
+  it('hands off when customer says tracking does not update', () => {
+    const result = handleCustomerMessage({
+      message: 'трек не обновляется 1234567890',
+      orders,
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'handoff_to_operator');
+    assert.equal(result.handoffReason, 'order_delivery_review');
+    assert.equal(result.systemLookup.status, 'found');
+    assert.match(result.answer, /Передаю оператору/);
+    assert.match(result.answer, /1234567890/);
+  });
+
+  it('hands off stuck delivery issue for a known customer order', () => {
+    const result = handleCustomerMessage({
+      message: 'мой заказ завис',
+      customer: { id: 'customer-ivanov' },
+      orders,
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'handoff_to_operator');
+    assert.equal(result.handoffReason, 'order_delivery_review');
+    assert.equal(result.systemLookup.status, 'found');
+    assert.match(result.answer, /#7_M/);
+  });
+
   it('answers order status when customer starts with public order number', () => {
     const result = handleCustomerMessage({
       message: 'RS-20250603-EF789',
