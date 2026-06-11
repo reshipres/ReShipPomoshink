@@ -86,6 +86,9 @@ function routeDecision(classified, message, context) {
     case INTENTS.ORDER_LOOKUP_FOLLOWUP:
     case INTENTS.ORDER_STATUS:
       if (orderContext) {
+        const lookupDecision = composeOrderLookupDecision(orderContext, classified);
+        if (lookupDecision) return lookupDecision;
+
         return answer('order_status', composeOrderStatusAnswer(orderContext), [
           'Обнови статус CDEK',
           'Когда ждать доставку?',
@@ -93,7 +96,9 @@ function routeDecision(classified, message, context) {
         ], classified.confidence);
       }
 
-      return ask('order_status', 'Проверю заказ. Пришлите номер заказа, трек CDEK, телефон или фамилию получателя.', [
+      return ask('order_status', classified.hint
+        ? 'Проверю заказ по этим данным. Если не найду точное совпадение, попрошу уточнить номер заказа, трек CDEK, телефон или фамилию получателя.'
+        : 'Проверю заказ. Пришлите номер заказа, трек CDEK, телефон или фамилию получателя.', [
         'Проверь последний заказ',
         'Позови оператора',
       ], classified.confidence, {
@@ -199,4 +204,28 @@ function routeDecision(classified, message, context) {
         'Позови оператора',
       ], classified.confidence);
   }
+}
+
+function composeOrderLookupDecision(orderContext, classified) {
+  const lookupStatus = orderContext.lookupStatus || orderContext.resultStatus || null;
+
+  if (lookupStatus === 'not_found') {
+    return ask('order_status', 'Не нашел заказ по этим данным. Пришлите номер заказа, трек CDEK, телефон или фамилию получателя. Если данных нет под рукой, передам оператору.', [
+      'Позови оператора',
+      'Проверить другой заказ',
+    ], classified.confidence, { type: 'order', strategy: 'ask_for_hint' });
+  }
+
+  if (lookupStatus === 'multiple' || lookupStatus === 'ambiguous') {
+    return ask('order_status', 'Нашел несколько похожих заказов. Чтобы не перепутать, пришлите номер заказа или трек CDEK.', [
+      'Позови оператора',
+      'Проверить другой заказ',
+    ], classified.confidence, { type: 'order', strategy: 'ask_for_exact_hint' });
+  }
+
+  if (orderContext.requiresOperator || lookupStatus === 'operator_required') {
+    return handoff('order_status', 'Вижу заказ, но по нему нужна ручная проверка оператора. Передаю контекст, чтобы не пришлось повторять данные.', 'order_requires_operator', 'Заказ требует ручной проверки', orderContext.operatorReason || 'Заказ найден, но требует ручной проверки.');
+  }
+
+  return null;
 }

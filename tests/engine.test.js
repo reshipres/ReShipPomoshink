@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { handleMessage } from '../src/index.js';
 
 const fixtures = JSON.parse(readFileSync(new URL('../fixtures/client-phrases.json', import.meta.url), 'utf8'));
+const conversationScenarios = JSON.parse(readFileSync(new URL('../fixtures/conversation-scenarios.json', import.meta.url), 'utf8'));
 
 describe('ReShipPomoshink intent regression', () => {
   for (const fixture of fixtures) {
@@ -69,6 +70,8 @@ describe('order answer quality', () => {
     assert.equal(second.action, 'ask_clarifying_question');
     assert.equal(second.contextRequest.type, 'order');
     assert.equal(second.contextRequest.strategy, 'by_hint');
+    assert.match(second.answer, /по этим данным/);
+    assert.doesNotMatch(second.answer, /^Проверю заказ\. Пришлите/u);
   });
 
   it('clears pending request after answering with order context', () => {
@@ -85,4 +88,121 @@ describe('order answer quality', () => {
     assert.equal(result.action, 'answer');
     assert.equal(result.nextSession.pendingRequest, undefined);
   });
+
+  it('explains when order lookup found nothing', () => {
+    const result = handleMessage({
+      message: '+7 999 123 45 67',
+      orderContext: {
+        lookupStatus: 'not_found',
+      },
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.match(result.answer, /Не нашел заказ/);
+    assert.equal(result.contextRequest.strategy, 'ask_for_hint');
+  });
+
+  it('asks for exact identifier when lookup is ambiguous', () => {
+    const result = handleMessage({
+      message: 'Иванов',
+      session: { pendingRequest: { type: 'order', intent: 'order_status' } },
+      orderContext: {
+        lookupStatus: 'multiple',
+      },
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.match(result.answer, /несколько похожих заказов/);
+    assert.equal(result.contextRequest.strategy, 'ask_for_exact_hint');
+  });
+
+  it('hands off order cases that require manual review', () => {
+    const result = handleMessage({
+      message: 'где мой заказ',
+      orderContext: {
+        orderNumber: '6_L',
+        status: 'PROCESSING',
+        requiresOperator: true,
+        operatorReason: 'Статус доставки не обновлялся больше недели.',
+      },
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'handoff_to_operator');
+    assert.equal(result.handoffReason, 'order_requires_operator');
+    assert.match(result.answer, /ручная проверка оператора/);
+  });
 });
+
+describe('low-friction product flow', () => {
+  it('does not ask for product name again when customer already sent it', () => {
+    const result = handleMessage({ message: 'wlmouse beast max' });
+
+    assert.equal(result.intent, 'availability');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.equal(result.contextRequest.type, 'product');
+    assert.equal(result.contextRequest.strategy, 'by_hint');
+    assert.match(result.answer, /по этому товару/);
+    assert.doesNotMatch(result.answer, /Пришлите ссылку/);
+  });
+
+  it('does not ask for product name again for price questions with model', () => {
+    const result = handleMessage({ message: 'сколько будет стоить beast max?' });
+
+    assert.equal(result.intent, 'price_discount');
+    assert.equal(result.contextRequest.type, 'product');
+    assert.equal(result.contextRequest.strategy, 'by_hint');
+    assert.match(result.answer, /по этому товару/);
+  });
+});
+
+describe('customer conversation scenarios', () => {
+  for (const scenario of conversationScenarios) {
+    it(scenario.name, () => {
+      let session = {};
+
+      for (const step of scenario.steps) {
+        const result = handleMessage({
+          message: step.message,
+          session: step.session || session,
+          orderContext: step.orderContext || null,
+          productContext: step.productContext || null,
+        });
+
+        assertScenarioExpectation(result, step.expect);
+        session = result.nextSession || {};
+      }
+    });
+  }
+});
+
+function assertScenarioExpectation(result, expectation) {
+  assert.equal(result.intent, expectation.intent);
+  assert.equal(result.action, expectation.action);
+
+  if (expectation.handoffReason) {
+    assert.equal(result.handoffReason, expectation.handoffReason);
+  }
+
+  if (expectation.contextRequestType) {
+    assert.equal(result.contextRequest?.type, expectation.contextRequestType);
+  }
+
+  if (expectation.contextRequestStrategy) {
+    assert.equal(result.contextRequest?.strategy, expectation.contextRequestStrategy);
+  }
+
+  for (const pattern of expectation.answerIncludes || []) {
+    assert.match(result.answer, new RegExp(escapeRegExp(pattern), 'u'));
+  }
+
+  for (const pattern of expectation.answerExcludes || []) {
+    assert.doesNotMatch(result.answer, new RegExp(escapeRegExp(pattern), 'u'));
+  }
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

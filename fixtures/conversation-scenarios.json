@@ -1,0 +1,111 @@
+[
+  {
+    "name": "order lookup after customer sends phone",
+    "steps": [
+      {
+        "message": "где мой заказ",
+        "expect": {
+          "intent": "order_status",
+          "action": "ask_clarifying_question",
+          "contextRequestType": "order"
+        }
+      },
+      {
+        "message": "+7 999 123 45 67",
+        "orderContext": {
+          "orderNumber": "6_L",
+          "status": "PROCESSING",
+          "deliveryMethod": "CDEK_PVZ",
+          "cdekTrackingNumber": "1234567890"
+        },
+        "expect": {
+          "intent": "order_status",
+          "action": "answer",
+          "answerIncludes": ["Нашел заказ #6_L", "в обработке", "Трек CDEK"],
+          "answerExcludes": ["Пришлите номер заказа"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "product availability with model in first message",
+    "steps": [
+      {
+        "message": "wlmouse beast max есть?",
+        "expect": {
+          "intent": "availability",
+          "action": "ask_clarifying_question",
+          "contextRequestType": "product",
+          "contextRequestStrategy": "by_hint",
+          "answerIncludes": ["по этому товару"],
+          "answerExcludes": ["Пришлите ссылку"]
+        }
+      },
+      {
+        "message": "wlmouse beast max есть?",
+        "productContext": {
+          "name": "WLmouse Beast Max",
+          "quantity": 3,
+          "price": 15990,
+          "sklad": "Москва"
+        },
+        "expect": {
+          "intent": "availability",
+          "action": "answer",
+          "answerIncludes": ["WLmouse Beast Max", "В наличии 3 шт.", "Цена"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "site checkout problem goes to operator",
+    "steps": [
+      {
+        "message": "не могу оформить заказ, сайт выдает ошибку в корзине",
+        "expect": {
+          "intent": "site_issue",
+          "action": "handoff_to_operator",
+          "handoffReason": "site_issue",
+          "answerIncludes": ["помогли оформить"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "ambiguous order lookup asks for exact id",
+    "steps": [
+      {
+        "message": "Иванов",
+        "session": {
+          "pendingRequest": {
+            "type": "order",
+            "intent": "order_status"
+          }
+        },
+        "orderContext": {
+          "lookupStatus": "multiple"
+        },
+        "expect": {
+          "intent": "order_status",
+          "action": "ask_clarifying_question",
+          "contextRequestStrategy": "ask_for_exact_hint",
+          "answerIncludes": ["несколько похожих заказов", "номер заказа или трек CDEK"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "external link request goes to manual calculation",
+    "steps": [
+      {
+        "message": "можно заказать по ссылке https://example.com/item/123 размер m черный",
+        "expect": {
+          "intent": "custom_order_request",
+          "action": "handoff_to_operator",
+          "handoffReason": "custom_order_request",
+          "answerIncludes": ["ручной расчет"]
+        }
+      }
+    ]
+  }
+]
