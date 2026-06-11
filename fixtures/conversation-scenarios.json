@@ -164,5 +164,51 @@
         }
       }
     ]
+  },
+  {
+    "name": "general help topic reply routes to product availability",
+    "steps": [
+      {
+        "message": "можете подсказать?",
+        "expect": {
+          "intent": "general_help",
+          "action": "ask_clarifying_question",
+          "contextRequestType": "general"
+        }
+      },
+      {
+        "message": "наличие",
+        "expect": {
+          "intent": "availability",
+          "action": "ask_clarifying_question",
+          "contextRequestType": "product",
+          "contextRequestStrategy": "ask_for_hint",
+          "answerIncludes": ["Проверю наличие"],
+          "answerExcludes": ["Что именно нужно?"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "general help topic reply routes to delivery terms",
+    "steps": [
+      {
+        "message": "можете подсказать?",
+        "expect": {
+          "intent": "general_help",
+          "action": "ask_clarifying_question",
+          "contextRequestType": "general"
+        }
+      },
+      {
+        "message": "доставка",
+        "expect": {
+          "intent": "delivery_terms",
+          "action": "answer",
+          "answerIncludes": ["Срок зависит от города"],
+          "answerExcludes": ["Пришлите номер заказа"]
+        }
+      }
+    ]
   }
 ]

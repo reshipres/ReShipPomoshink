@@ -72,6 +72,11 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.HUMAN_REQUESTED, 0.99);
   }
 
+  if (pendingRequest?.type === 'general') {
+    const topicIntent = classifyGeneralTopicReply(text);
+    if (topicIntent) return match(topicIntent, 0.9);
+  }
+
   if (looksLikeDeliveryDataPayload(message)) {
     return match(INTENTS.DELIVERY_DATA, 0.96);
   }
@@ -146,6 +151,44 @@ export function classifyMessage(message, session = {}) {
 
 function match(intent, confidence, extras = {}) {
   return { intent, confidence, ...extras };
+}
+
+function classifyGeneralTopicReply(text) {
+  if (!text || text.length > 80 || text.split(/\s+/).length > 5) return null;
+
+  if (/^(заказ|заказы|мой заказ|статус|трек|трек номер|накладная|посылка|доставка заказа)$/i.test(text)) {
+    return INTENTS.ORDER_STATUS;
+  }
+
+  if (/^(товар|товары|наличие|остатки|в наличии|модель|модели|карточка товара)$/i.test(text)) {
+    return INTENTS.AVAILABILITY;
+  }
+
+  if (/^(цена|стоимость|сколько стоит|скидка|промокод|акция)$/i.test(text)) {
+    return INTENTS.PRICE_DISCOUNT;
+  }
+
+  if (/^(доставка|сроки|срок доставки|сколько доставка|курьер|сдэк|cdek)$/i.test(text)) {
+    return INTENTS.DELIVERY_TERMS;
+  }
+
+  if (/^(оплата|оплатить|платеж|платежи|сбп|карта|чек)$/i.test(text)) {
+    return INTENTS.PAYMENT;
+  }
+
+  if (/^(возврат|обмен|гарантия|брак|ремонт)$/i.test(text)) {
+    return INTENTS.WARRANTY_OR_RETURN;
+  }
+
+  if (/^(самовывоз|забрать|адрес)$/i.test(text)) {
+    return INTENTS.PICKUP;
+  }
+
+  if (/^(отзыв|отзывы)$/i.test(text)) {
+    return INTENTS.REVIEW;
+  }
+
+  return null;
 }
 
 export function hasActionableRequest(message) {
