@@ -336,6 +336,27 @@ describe('customer-style product lookup conversations', () => {
     assert.match(result.answer, /WLmouse Beast Max Black/);
     assert.match(result.answer, /В наличии 3 шт/);
     assert.doesNotMatch(result.answer, /Пришлите ссылку/);
+    assert.equal(result.nextSession.lastProductLookup.slug, 'wlmouse-beast-max-black');
+  });
+
+  it('answers price follow-up without asking for product name again', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а сколько стоит?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'price_discount');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /WLmouse Beast Max Black/);
+    assert.match(second.answer, /15\s?990/);
+    assert.doesNotMatch(second.answer, /Пришлите ссылку/);
   });
 
   it('answers price when customer sends a known model', () => {
@@ -360,6 +381,7 @@ describe('customer-style product lookup conversations', () => {
     assert.equal(result.action, 'ask_clarifying_question');
     assert.equal(result.systemLookup.status, 'multiple');
     assert.match(result.answer, /несколько похожих товаров/);
+    assert.equal(result.nextSession.lastProductLookup, undefined);
   });
 
   it('explains when product is not found in the system', () => {
@@ -385,5 +407,25 @@ describe('customer-style product lookup conversations', () => {
     assert.equal(result.systemLookup.status, 'found');
     assert.match(result.answer, /LAMZU Atlantis Mini Pro/);
     assert.match(result.answer, /не активен в каталоге/);
+  });
+
+  it('answers price follow-up after product search result', () => {
+    const first = handleCustomerMessage({
+      message: 'я не могу найти lamzu atlantis mini на сайте',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а цена?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'price_discount');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /LAMZU Atlantis Mini Pro/);
+    assert.match(second.answer, /12\s?990/);
+    assert.doesNotMatch(second.answer, /Пришлите ссылку/);
   });
 });

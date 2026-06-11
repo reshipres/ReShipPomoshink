@@ -30,7 +30,7 @@ export function handleCustomerMessage({
     };
   }
 
-  const productContext = resolveProductContext(first, products);
+  const productContext = resolveProductContext(first, products, session);
   if (productContext) {
     const second = handleMessage({
       message,
@@ -40,6 +40,7 @@ export function handleCustomerMessage({
 
     return {
       ...second,
+      nextSession: enrichSessionWithProduct(second.nextSession, productContext),
       systemLookup: {
         type: 'product',
         status: productContext.lookupStatus || 'found',
@@ -78,11 +79,27 @@ function resolveOrderContext(result, message, customer, orders, session) {
   return directMatch;
 }
 
-function resolveProductContext(result, products) {
+function resolveProductContext(result, products, session) {
   const request = result.contextRequest;
-  if (request?.type !== 'product' || !request.hint) return null;
+  if (request?.type !== 'product') return null;
+
+  if (!request.hint) {
+    return findLastProductContext(session, products);
+  }
 
   return findProductContext(request.hint, products);
+}
+
+function enrichSessionWithProduct(session, productContext) {
+  if (!isFoundProductContext(productContext)) return session;
+
+  return {
+    ...session,
+    lastProductLookup: {
+      name: productContext.name || null,
+      slug: productContext.slug || null,
+    },
+  };
 }
 
 function enrichSessionWithOrder(session, orderContext) {
@@ -130,6 +147,23 @@ function findLastOrderContext(session, orders) {
   return null;
 }
 
+function findLastProductContext(session, products) {
+  const lookup = session?.lastProductLookup || {};
+  const identifiers = [
+    lookup.slug,
+    lookup.name,
+  ].filter(Boolean);
+
+  for (const identifier of identifiers) {
+    const productContext = findProductContext(identifier, products);
+    if (productContext.lookupStatus !== 'not_found' && productContext.lookupStatus !== 'multiple') {
+      return productContext;
+    }
+  }
+
+  return null;
+}
+
 function isFoundOrderContext(orderContext) {
   const lookupStatus = orderContext?.lookupStatus || orderContext?.resultStatus || null;
   if (['not_found', 'multiple', 'ambiguous'].includes(lookupStatus)) return false;
@@ -139,6 +173,13 @@ function isFoundOrderContext(orderContext) {
     || orderContext?.shortId
     || orderContext?.orderId
     || orderContext?.cdekTrackingNumber);
+}
+
+function isFoundProductContext(productContext) {
+  const lookupStatus = productContext?.lookupStatus || productContext?.resultStatus || null;
+  if (['not_found', 'multiple', 'ambiguous'].includes(lookupStatus)) return false;
+
+  return Boolean(productContext?.name || productContext?.slug);
 }
 
 function messageLooksLikeOrderFollowup(message) {
