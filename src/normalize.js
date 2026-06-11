@@ -154,7 +154,7 @@ function extractShortCrmHint(message) {
   const fullText = normalized.replace(/\s+/g, '');
   const shortText = normalizeText(matchedText).replace(/\s+/g, '');
   const isStandalone = fullText === shortText;
-  const hasOrderCue = /заказ|номер|№|#/i.test(value);
+  const hasOrderCue = messageHasOrderCue(value);
   if (!isStandalone && !hasOrderCue) return null;
 
   const safeStandaloneSuffix = /[а-я]/i.test(suffix)
@@ -163,4 +163,8 @@ function extractShortCrmHint(message) {
   if (!hasOrderCue && !safeStandaloneSuffix) return null;
 
   return `${number}_${suffix.toUpperCase()}`;
+}
+
+function messageHasOrderCue(value) {
+  return /(заказ|номер|№|#|трек|накладн|сдэк|cdek|достав|куда|когда|срок|пвз|пункт|получател|телефон|оплат|оплач|плат[её]ж)/i.test(value);
 }

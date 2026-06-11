@@ -90,8 +90,7 @@ function orderTime(order) {
 }
 
 function findNameMatches(query, orders) {
-  const text = normalizeText(query);
-  const words = text.split(/\s+/).filter((word) => word.length >= 2);
+  const words = nameQueryWords(query);
   if (!words.length || words.some((word) => /\d/.test(word))) return [];
 
   return orders.filter((order) => {
@@ -106,6 +105,33 @@ function findNameMatches(query, orders) {
 
     return words.every((word) => nameTokens.some((token) => nameTokenMatches(word, token)));
   });
+}
+
+function nameQueryWords(query) {
+  const ignoredWords = new Set([
+    'по',
+    'фамилия',
+    'фамилии',
+    'фио',
+    'имя',
+    'получатель',
+    'получателя',
+    'получателю',
+    'получателем',
+    'получателе',
+    'мой',
+    'моя',
+    'мое',
+    'моё',
+    'моего',
+    'моему',
+    'меня',
+    'зовут',
+  ]);
+
+  return normalizeText(query)
+    .split(/\s+/)
+    .filter((word) => word.length >= 2 && !ignoredWords.has(word));
 }
 
 function nameTokenMatches(queryWord, nameToken) {

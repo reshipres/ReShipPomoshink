@@ -77,21 +77,29 @@ export function classifyMessage(message, session = {}) {
     if (topicIntent) return match(topicIntent, 0.9);
   }
 
-  if (messageLooksLikeDeliveryTrackingQuestion(message)) {
-    return match(INTENTS.ORDER_STATUS, 0.94, { hint: extractOrderHint(message) });
-  }
-
   const orderDetail = extractOrderDetailRequest(message);
-  if (orderDetail && (orderDetail !== 'delivery_timing' || messageCanUseOrderDetailContext(message, session))) {
-    return match(INTENTS.ORDER_STATUS, 0.9, { detail: orderDetail });
-  }
 
-  if (messageLooksLikePaymentMethodQuestion(message)) {
-    return match(INTENTS.PAYMENT, 0.86);
+  if (messageLooksLikeDeliveryTrackingQuestion(message)) {
+    return match(INTENTS.ORDER_STATUS, 0.94, {
+      hint: extractOrderHint(message),
+      ...(orderDetail ? { detail: orderDetail } : {}),
+    });
   }
 
   if (looksLikeDeliveryDataPayload(message)) {
     return match(INTENTS.DELIVERY_DATA, 0.96);
+  }
+
+  if (orderDetail && (orderDetail !== 'delivery_timing' || messageCanUseOrderDetailContext(message, session))) {
+    const hint = extractOrderHint(message);
+    return match(INTENTS.ORDER_STATUS, 0.9, {
+      detail: orderDetail,
+      ...(hint ? { hint } : {}),
+    });
+  }
+
+  if (messageLooksLikePaymentMethodQuestion(message)) {
+    return match(INTENTS.PAYMENT, 0.86);
   }
 
   if (/(изменить|поменять|сменить|исправить|заменить|перенести).*(адрес|телефон|номер|получател|заказ|пвз|пункт выдачи|доставк|цвет|товар|модель|позици)|отменить заказ|отмена заказа|объединить заказ|добавить.*к заказ|давайте заменим/i.test(message)) {
@@ -366,10 +374,10 @@ function messageLooksLikeDeliveryTrackingQuestion(message) {
 }
 
 function extractOrderDetailRequest(message) {
-  if (extractOrderHint(message)) return null;
   if (/(изменить|поменять|сменить|исправить|заменить|перенести)/i.test(message)) return null;
+  const hint = extractOrderHint(message);
 
-  if (/(оплат[ауы]?\s+(прошл|зачисл|видн|есть)|плат[её]ж\s+(прош[её]л|видн|зачисл)|заказ\s+оплачен|он\s+оплачен|оплачен\s+ли|статус\s+оплат|видите\s+оплат)/i.test(message)) {
+  if (/(оплат[ауы]?\s+(прошл|зачисл|видн|есть)|плат[её]ж\s+(прош[её]л|видн|зачисл)|заказ\s+оплачен|он\s+оплачен|оплачен\s+ли|статус\s+оплат|видите\s+оплат|(^|[^a-zа-я0-9])оплачен[ао]?(?=$|[^a-zа-я0-9]))/i.test(message)) {
     return 'payment_status';
   }
 
@@ -389,7 +397,7 @@ function extractOrderDetailRequest(message) {
     return 'recipient';
   }
 
-  if (/(какой\s+телефон|телефон\s+(указан|получател|в\s+заказе)|номер\s+телефона)/i.test(message)) {
+  if (/(какой\s+телефон|телефон\s+(указан|получател|в\s+заказе)|номер\s+телефона)/i.test(message) || (hint && /(^|[^a-zа-я0-9])телефон(?=$|[^a-zа-я0-9])/i.test(message))) {
     return 'recipient_phone';
   }
 
