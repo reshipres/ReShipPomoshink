@@ -33,6 +33,17 @@ describe('system order lookup', () => {
     assert.equal(findOrderContext('номер заказа №6_L', orders).crmOrderNumber, '6_L');
   });
 
+  it('finds an order by relaxed short CRM number variants', () => {
+    assert.equal(findOrderContext('6L', orders).crmOrderNumber, '6_L');
+    assert.equal(findOrderContext('6 L', orders).crmOrderNumber, '6_L');
+    assert.equal(findOrderContext('6-Л', orders).crmOrderNumber, '6_L');
+    assert.equal(findOrderContext('№6 Л', orders).crmOrderNumber, '6_L');
+    assert.equal(findOrderContext('заказ 6 л', orders).crmOrderNumber, '6_L');
+    assert.equal(findOrderContext('номер 7 м', orders).crmOrderNumber, '7_M');
+    assert.equal(findOrderContext('8 N', orders).crmOrderNumber, '8_N');
+    assert.equal(findOrderContext('8Н', orders).crmOrderNumber, '8_N');
+  });
+
   it('finds an order by phone number', () => {
     const order = findOrderContext('+7 999 123 45 67', orders);
 
@@ -375,7 +386,7 @@ describe('customer-style order lookup conversations', () => {
   });
 
   it('answers order status when customer sends a short CRM number', () => {
-    for (const message of ['6_L', '№6_L', '#6_L', 'заказ 6_L', 'номер заказа №6_L']) {
+    for (const message of ['6_L', '№6_L', '#6_L', 'заказ 6_L', 'номер заказа №6_L', '6L', '6 Л', '6-Л', '№6 Л', 'заказ 6 л']) {
       const result = handleCustomerMessage({ message, orders });
 
       assert.equal(result.intent, 'order_status');

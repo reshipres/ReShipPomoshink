@@ -114,5 +114,50 @@ function nameTokenMatches(queryWord, nameToken) {
 }
 
 function normalizeIdentifier(value) {
-  return String(value || '').trim().toLowerCase().replace(/^[#№]\s*/u, '').replace(/\s+/g, '');
+  return transliterateIdentifier(value)
+    .trim()
+    .toLowerCase()
+    .replace(/^[#№]\s*/u, '')
+    .replace(/[\s_-]+/g, '');
+}
+
+function transliterateIdentifier(value) {
+  const map = {
+    а: 'a',
+    б: 'b',
+    в: 'v',
+    г: 'g',
+    д: 'd',
+    е: 'e',
+    ё: 'e',
+    ж: 'zh',
+    з: 'z',
+    и: 'i',
+    й: 'i',
+    к: 'k',
+    л: 'l',
+    м: 'm',
+    н: 'n',
+    о: 'o',
+    п: 'p',
+    р: 'r',
+    с: 's',
+    т: 't',
+    у: 'u',
+    ф: 'f',
+    х: 'h',
+    ц: 'ts',
+    ч: 'ch',
+    ш: 'sh',
+    щ: 'sh',
+    ы: 'y',
+    э: 'e',
+    ю: 'yu',
+    я: 'ya',
+  };
+
+  return String(value || '').replace(/[а-яё]/gi, (char) => {
+    const lower = char.toLowerCase();
+    return map[lower] || char;
+  });
 }

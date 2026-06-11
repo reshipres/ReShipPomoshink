@@ -35,13 +35,18 @@ export function extractOrderHint(message = '') {
     /\+?\d[\d\s().-]{8,}\d/i,
     /\b\d{3,8}R\b/i,
     /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
-    /\b\d{4,12}\b/,
   ];
 
   for (const pattern of patterns) {
     const match = String(message).match(pattern);
     if (match) return normalizeOrderHint(match[0]);
   }
+
+  const shortCrmHint = extractShortCrmHint(message);
+  if (shortCrmHint) return shortCrmHint;
+
+  const numericMatch = String(message).match(/\b\d{4,12}\b/);
+  if (numericMatch) return normalizeOrderHint(numericMatch[0]);
 
   return null;
 }
@@ -134,4 +139,28 @@ export function looksLikeLookupFragment(message = '') {
 
 function normalizeOrderHint(value) {
   return String(value || '').trim().replace(/^[#№]\s*/u, '');
+}
+
+function extractShortCrmHint(message) {
+  const value = String(message || '').trim();
+  if (!value) return null;
+  const normalized = normalizeText(value).replace(/-/g, ' ');
+
+  const match = normalized.match(/(^|[^0-9a-zа-я])(?:№|#)?\s*(\d{1,8})\s*([a-zа-я]{1,3})(?=$|[^0-9a-zа-я])/iu);
+  if (!match) return null;
+
+  const [, , number, suffix] = match;
+  const matchedText = `${number} ${suffix}`;
+  const fullText = normalized.replace(/\s+/g, '');
+  const shortText = normalizeText(matchedText).replace(/\s+/g, '');
+  const isStandalone = fullText === shortText;
+  const hasOrderCue = /заказ|номер|№|#/i.test(value);
+  if (!isStandalone && !hasOrderCue) return null;
+
+  const safeStandaloneSuffix = /[а-я]/i.test(suffix)
+    || suffix === suffix.toUpperCase()
+    || /^[lmn]$/i.test(suffix);
+  if (!hasOrderCue && !safeStandaloneSuffix) return null;
+
+  return `${number}_${suffix.toUpperCase()}`;
 }

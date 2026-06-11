@@ -18,6 +18,7 @@
   { "message": "что с сдэк 1234567890", "intent": "order_status", "action": "ask_clarifying_question" },
   { "message": "трек не обновляется 1234567890", "intent": "order_status", "action": "ask_clarifying_question" },
   { "message": "6_L", "intent": "order_status", "action": "ask_clarifying_question" },
+  { "message": "6Л", "intent": "order_status", "action": "ask_clarifying_question" },
   { "message": "номер заказа №6_L", "intent": "order_status", "action": "ask_clarifying_question" },
   { "message": "+7 999 123 45 67", "intent": "order_status", "action": "ask_clarifying_question" },
   { "message": "другой", "session": { "lastIntent": "order_status" }, "intent": "order_status", "action": "ask_clarifying_question" },
