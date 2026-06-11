@@ -157,6 +157,10 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.ORDER_LOOKUP_FOLLOWUP, 0.9, { hint: extractOrderHint(message) || message.trim() });
   }
 
+  if (session?.lastProductLookup && messageLooksLikeProductLinkFollowup(message)) {
+    return match(INTENTS.ORDER_HELP, 0.9);
+  }
+
   if (!actionable && messageLooksLikeAcknowledgement(message)) {
     return match(INTENTS.ACKNOWLEDGEMENT, 0.96);
   }
@@ -309,6 +313,10 @@ function messageLooksLikeHowToOrder(message) {
   return /(как.*(оформ|заказат|купить)|как купить|как оформить заказ|хочу заказать|хочу купить|можно оформить|можно купить|как происходит заказ|давайте оформим|давайте закажем|тогда возьму|тогда беру|беру)/i.test(message);
 }
 
+function messageLooksLikeProductLinkFollowup(message) {
+  return /(?:^|\s)(?:можно|дай|дайте|скинь|скиньте|пришлите|отправьте)?\s*(?:ссылк[ауи]|карточк[ауи])(?:\s|$|\?|\!|\.)/i.test(message);
+}
+
 function messageLooksLikeDeliveryTerms(message) {
   if (extractOrderHint(message)) return false;
   return /(сколько.*(достав|ид[её]т|ехать|ждать|времени|дней)|через сколько|в течени[еи] какого|как долго|долго.*ждать|срок.*(достав|отправ|предзаказ|ожидан)|сроки|будет идти|доставка.*сколько|стоим.*достав|цена.*достав|тариф.*сдэк|доставк[аи].*(москв|росси|регион|город|курьер|пвз))/i.test(message)
@@ -339,7 +347,7 @@ function messageLooksLikeProductSearch(message) {
 }
 
 function messageLooksLikeReview(message) {
-  return /(где|как|куда|можно).{0,40}(оставить|оставлять|написать|посмотреть).{0,40}(отзыв|отзывы|обзор)|отзыв(ы)?.{0,50}(оставить|оставлять|написать|посмотреть|не вижу|не отображ|не дает|не даёт|где|куда)|(?:оставить|оставлять|написать|посмотреть).{0,40}(отзыв|отзывы|обзор)/i.test(message);
+  return /(где|как|куда|можно).{0,40}(оставить|оставлять|написать|посмотреть).{0,40}(отзыв|отзывы|обзор)|отзыв(ы)?.{0,50}(есть|оставить|оставлять|написать|посмотреть|не вижу|не отображ|не дает|не даёт|где|куда)|(?:оставить|оставлять|написать|посмотреть).{0,40}(отзыв|отзывы|обзор)|есть.{0,30}(отзыв|отзывы|обзор)/i.test(message);
 }
 
 function messageLooksLikeInternationalDelivery(message) {

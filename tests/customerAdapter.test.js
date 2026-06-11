@@ -1040,6 +1040,71 @@ describe('customer-style product lookup conversations', () => {
     assert.doesNotMatch(second.answer, /Пришлите ссылку/);
   });
 
+  it('answers product link follow-up for the previously found product', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    for (const message of ['можно ссылку', 'скинь ссылку']) {
+      const result = handleCustomerMessage({
+        message,
+        session: first.nextSession,
+        products,
+      });
+
+      assert.equal(result.intent, 'order_help', message);
+      assert.equal(result.action, 'answer', message);
+      assert.equal(result.systemLookup.status, 'found', message);
+      assert.match(result.answer, /WLmouse Beast Max Black/, message);
+      assert.match(result.answer, /https:\/\/reship\.pro\/product\/wlmouse-beast-max-black/, message);
+      assert.doesNotMatch(result.answer, /Я могу проверить/, message);
+      assert.doesNotMatch(result.answer, /Пришлите ссылку/, message);
+    }
+  });
+
+  it('answers review follow-up for the previously found product', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а отзывы есть',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'review');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /WLmouse Beast Max Black/);
+    assert.match(second.answer, /https:\/\/reship\.pro\/product\/wlmouse-beast-max-black/);
+    assert.doesNotMatch(second.answer, /Я могу проверить/);
+  });
+
+  it('answers advice follow-up for the previously found product without asking for the model again', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а подойдет для claw grip',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'product_advice');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /WLmouse Beast Max Black/);
+    assert.match(second.answer, /хват/);
+    assert.match(second.answer, /размер руки/);
+    assert.doesNotMatch(second.answer, /Напишите модель устройства/);
+    assert.doesNotMatch(second.answer, /Я могу проверить/);
+  });
+
   it('answers order help with product context when model is in the same message', () => {
     const result = handleCustomerMessage({
       message: 'как заказать beast max?',

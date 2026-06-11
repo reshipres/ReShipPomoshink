@@ -270,6 +270,23 @@ export function composeProductDiscountAnswer(product) {
   return `${priceText} Отдельный промокод или ручную скидку в базе не вижу. Итоговая цена проверяется в карточке и корзине; если промокод не срабатывает, передам оператору.`;
 }
 
+export function composeProductReviewAnswer(product) {
+  const name = product?.name || 'этому товару';
+  const productUrl = product?.slug ? `https://reship.pro/product/${product.slug}` : null;
+
+  if (productUrl) {
+    return `Отзывы по ${name} можно смотреть в карточке товара: ${productUrl}. Если отзывы не отображаются или нужен отзыв по конкретному заказу, передам оператору.`;
+  }
+
+  return `Отзывы по ${name} обычно смотрятся в карточке товара. Если карточку не нашли или отзыв не отображается, передам оператору.`;
+}
+
+export function composeProductAdviceAnswer(product) {
+  const name = product?.name || 'этой модели';
+
+  return `По ${name} могу сориентировать по подбору, но нужно знать хват, размер руки и с чем сравниваете. Напишите эти данные одним сообщением; если нужна совместимость, моддинг или спорный выбор, передам оператору.`;
+}
+
 export function composeProductOrderHelpAnswer(product) {
   const name = product.name || 'этот товар';
   const lines = [];

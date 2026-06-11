@@ -107,7 +107,7 @@ function resolveProductContext(result, products, session) {
     return productContext;
   }
 
-  if (result.intent === 'order_help') {
+  if (['order_help', 'product_advice', 'review'].includes(result.intent)) {
     if (result.hint) return findProductContext(result.hint, products);
     return findLastProductContext(session, products);
   }

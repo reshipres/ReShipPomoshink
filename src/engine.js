@@ -6,9 +6,11 @@ import {
   composeOrderDetailAnswer,
   composeOrderStatusAnswer,
   composeProductAvailabilityAnswer,
+  composeProductAdviceAnswer,
   composeProductDiscountAnswer,
   composeProductOrderHelpAnswer,
   composeProductPriceAnswer,
+  composeProductReviewAnswer,
   composeProductRestockTimingAnswer,
   composeProductVariantSummaryAnswer,
   handoff,
@@ -297,6 +299,14 @@ function routeDecision(classified, message, context) {
       ], classified.confidence, { type: 'product', strategy: classified.hint ? 'by_hint' : 'ask_for_hint', hint: classified.hint || null });
 
     case INTENTS.PRODUCT_ADVICE:
+      if (productContext) {
+        return answer('product_advice', composeProductAdviceAnswer(productContext), [
+          'Сколько стоит?',
+          'Как оформить?',
+          'Позови оператора',
+        ], classified.confidence);
+      }
+
       return ask('product_advice', 'Помогу с подбором. Напишите модель устройства, хват/размер руки или текущий коврик/мышь. По совместимости запчастей лучше передам оператору.', [
         'Позови оператора',
         'Проверить наличие',
@@ -334,6 +344,14 @@ function routeDecision(classified, message, context) {
       return answer('payment', 'Оплата доступна картой МИР или через СБП на сайте. Наложенный платеж сейчас недоступен. Если деньги списались, а заказ не обновился, передам оператору.', ['Где мой заказ?', 'Позови оператора'], classified.confidence);
 
     case INTENTS.REVIEW:
+      if (productContext) {
+        return answer('review', composeProductReviewAnswer(productContext), [
+          'Как оформить?',
+          'Сколько стоит?',
+          'Позови оператора',
+        ], classified.confidence);
+      }
+
       return answer('review', 'Отзывы обычно можно смотреть и оставлять в карточке товара или на площадке, где оформлялся заказ. Если отзыв не отображается или нужен отзыв по конкретному заказу, передам оператору.', [
         'Позови оператора',
         'Где мой заказ?',
