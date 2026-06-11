@@ -168,6 +168,73 @@ describe('customer-style order lookup conversations', () => {
     assert.doesNotMatch(second.answer, /Не нашел заказ/);
   });
 
+  it('answers destination follow-up from the latest known customer order', () => {
+    const first = handleCustomerMessage({
+      message: 'где мой заказ',
+      customer: { id: 'customer-ivanov' },
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'куда едет?',
+      session: first.nextSession,
+      customer: { id: 'customer-ivanov' },
+      orders,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /#7_M/);
+    assert.match(second.answer, /CDEK курьером/);
+    assert.match(second.answer, /Курьерская улица, 7/);
+    assert.doesNotMatch(second.answer, /Пришлите номер заказа/);
+  });
+
+  it('answers pickup point follow-up after tracking lookup', () => {
+    const first = handleCustomerMessage({
+      message: '1234567890',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'какой пвз?',
+      session: first.nextSession,
+      orders,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /#6_L/);
+    assert.match(second.answer, /CDEK до пункта выдачи/);
+    assert.match(second.answer, /MSK123/);
+    assert.match(second.answer, /Тестовая улица, 1/);
+    assert.doesNotMatch(second.answer, /Пришлите номер заказа/);
+  });
+
+  it('answers tracking number follow-up without repeating full order status', () => {
+    const first = handleCustomerMessage({
+      message: 'где мой заказ',
+      customer: { id: 'customer-ivanov' },
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а номер накладной?',
+      session: first.nextSession,
+      customer: { id: 'customer-ivanov' },
+      orders,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /трек CDEK: 9876543210/);
+    assert.doesNotMatch(second.answer, /Пришлите номер заказа/);
+    assert.doesNotMatch(second.answer, /Если нужно изменить адрес/);
+  });
+
   it('answers pickup follow-up after a short order number', () => {
     const first = handleCustomerMessage({
       message: '6_L',
@@ -185,6 +252,27 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(second.systemLookup.status, 'found');
     assert.match(second.answer, /Нашел заказ #6_L/);
     assert.match(second.answer, /Способ получения/);
+  });
+
+  it('answers recipient phone follow-up with a masked number', () => {
+    const first = handleCustomerMessage({
+      message: 'Анна Петрова',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'какой телефон указан?',
+      session: first.nextSession,
+      orders,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /#8_N/);
+    assert.match(second.answer, /\+7 \*\*\* \*\*\* 22 33/);
+    assert.doesNotMatch(second.answer, /\+7 916 111 22 33/);
+    assert.doesNotMatch(second.answer, /Не нашел заказ/);
   });
 
   it('answers follow-up from the latest known customer order', () => {

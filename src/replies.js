@@ -80,6 +80,78 @@ export function composeOrderStatusAnswer(order) {
   return lines.join('\n');
 }
 
+export function composeOrderDetailAnswer(order, detail) {
+  const orderLabel = order.crmOrderNumber || order.orderNumber || order.shortId || order.orderId || 'без номера';
+
+  if (detail === 'tracking') {
+    if (order.cdekTrackingNumber) {
+      return `По заказу #${orderLabel} трек CDEK: ${order.cdekTrackingNumber}. Статус CDEK: ${CDEK_STATUS_TEXT[order.cdekOrderStatus] || order.cdekOrderStatus || 'пока не обновлен'}.`;
+    }
+
+    if (String(order.deliveryMethod || '').toUpperCase().includes('CDEK')) {
+      return `По заказу #${orderLabel} трек CDEK пока не вижу. Он появится после передачи заказа в доставку.`;
+    }
+
+    return `По заказу #${orderLabel} отдельный трек не нужен для выбранного способа получения.`;
+  }
+
+  if (detail === 'delivery_destination') {
+    return composeOrderDestinationAnswer(order, orderLabel);
+  }
+
+  if (detail === 'recipient') {
+    const recipient = order.recipientFullName || order.recipientLastName;
+    if (recipient) {
+      return `По заказу #${orderLabel} получатель: ${recipient}. Если нужно изменить получателя, передам оператору.`;
+    }
+
+    return `По заказу #${orderLabel} не вижу имя получателя в доступных данных. Передам оператору, если нужно проверить вручную.`;
+  }
+
+  if (detail === 'recipient_phone') {
+    const phone = maskPhone(order.recipientPhone || order.customerPhone);
+    if (phone) {
+      return `По заказу #${orderLabel} телефон получателя: ${phone}. Полный номер в чате не показываю. Если нужно изменить телефон, передам оператору.`;
+    }
+
+    return `По заказу #${orderLabel} не вижу телефон получателя в доступных данных. Передам оператору, если нужно проверить вручную.`;
+  }
+
+  return composeOrderStatusAnswer(order);
+}
+
+function composeOrderDestinationAnswer(order, orderLabel) {
+  const methodKey = String(order.deliveryMethod || '').toUpperCase();
+  const method = DELIVERY_METHOD_TEXT[methodKey] || 'выбранный способ доставки';
+
+  if (methodKey === 'PICKUP' || methodKey === 'SELF_PICKUP') {
+    return `По заказу #${orderLabel} выбран самовывоз: ${SUPPORT_CONTACTS.pickupAddress}. Получать можно после подтверждения готовности заказа.`;
+  }
+
+  if (methodKey === 'CDEK_PVZ') {
+    const pvz = [order.pvzCode, order.pvzAddress].filter(Boolean).join(', ');
+    if (pvz) {
+      return `По заказу #${orderLabel} выбран ${method}: ${pvz}. Если нужно изменить ПВЗ, передам оператору.`;
+    }
+
+    return `По заказу #${orderLabel} выбран ${method}, но точный адрес ПВЗ в доступных данных не вижу. Передам оператору, если нужно проверить вручную.`;
+  }
+
+  if (methodKey === 'CDEK_COURIER' || methodKey === 'MOSCOW_COURIER') {
+    if (order.deliveryAddress) {
+      return `По заказу #${orderLabel} выбран ${method}: ${order.deliveryAddress}. Если нужно изменить адрес, передам оператору.`;
+    }
+
+    return `По заказу #${orderLabel} выбран ${method}, но полный адрес в чате не показываю. Если нужно проверить или изменить адрес, передам оператору.`;
+  }
+
+  if (order.deliveryAddress) {
+    return `По заказу #${orderLabel} доставка: ${method}, ${order.deliveryAddress}. Если нужно изменить адрес, передам оператору.`;
+  }
+
+  return `По заказу #${orderLabel} способ получения: ${method}. Если нужно проверить точный адрес, передам оператору.`;
+}
+
 export function composeProductAvailabilityAnswer(product) {
   const lines = [`Проверил по базе: ${product.name}.`];
   const quantity = product.quantity ?? 0;
@@ -154,6 +226,16 @@ function isPublicPriceReliable(value) {
 
 function isPreorderProduct(product) {
   return /подзаказ|предзаказ/i.test(product.sklad || '') || (product.preorderPrice ?? 0) > 0;
+}
+
+function maskPhone(value) {
+  const raw = String(value || '').trim();
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length < 7) return null;
+
+  const suffix = digits.slice(-4).replace(/(\d{2})(\d{2})/, '$1 $2');
+  if (digits.startsWith('7') || digits.startsWith('8')) return `+7 *** *** ${suffix}`;
+  return `*** *** ${suffix}`;
 }
 
 function formatMoney(value) {

@@ -3,6 +3,7 @@ import {
   appendToHandoff,
   answer,
   ask,
+  composeOrderDetailAnswer,
   composeOrderStatusAnswer,
   composeProductAvailabilityAnswer,
   composeProductOrderHelpAnswer,
@@ -170,6 +171,14 @@ function routeDecision(classified, message, context) {
       if (orderContext) {
         const lookupDecision = composeOrderLookupDecision(orderContext, classified, message);
         if (lookupDecision) return lookupDecision;
+
+        if (classified.detail) {
+          return answer('order_status', composeOrderDetailAnswer(orderContext, classified.detail), [
+            'Где мой заказ?',
+            'Изменить данные',
+            'Позови оператора',
+          ], classified.confidence);
+        }
 
         return answer('order_status', composeOrderStatusAnswer(orderContext), [
           'Обнови статус CDEK',

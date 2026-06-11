@@ -81,6 +81,11 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.ORDER_STATUS, 0.94, { hint: extractOrderHint(message) });
   }
 
+  const orderDetail = extractOrderDetailRequest(message);
+  if (orderDetail) {
+    return match(INTENTS.ORDER_STATUS, 0.9, { detail: orderDetail });
+  }
+
   if (looksLikeDeliveryDataPayload(message)) {
     return match(INTENTS.DELIVERY_DATA, 0.96);
   }
@@ -290,6 +295,29 @@ function messageLooksLikeDeliveryTrackingQuestion(message) {
 
   return shortCdekLookup
     || /(что\s+с|где|статус|трек|накладн|движен|обновля|обновит|завис|едет|приед|посылк|заказ|когда|долго)/i.test(message);
+}
+
+function extractOrderDetailRequest(message) {
+  if (extractOrderHint(message)) return null;
+  if (/(изменить|поменять|сменить|исправить|заменить|перенести)/i.test(message)) return null;
+
+  if (/(трек|трек-?номер|номер\s+(накладн|отправлен)|накладн)/i.test(message)) {
+    return 'tracking';
+  }
+
+  if (/(куда\s+(едет|ид[её]т|отправ)|какой\s+(адрес|пвз|пункт)|адрес\s+(доставк|получен|указан)|пвз|пункт\s+выдачи|куда\s+достав)/i.test(message)) {
+    return 'delivery_destination';
+  }
+
+  if (/(кто\s+получател|получател[ья]|на\s+кого\s+(заказ|оформ)|фио\s+(получател|указан))/i.test(message)) {
+    return 'recipient';
+  }
+
+  if (/(какой\s+телефон|телефон\s+(указан|получател|в\s+заказе)|номер\s+телефона)/i.test(message)) {
+    return 'recipient_phone';
+  }
+
+  return null;
 }
 
 function messageLooksLikeCustomOrderRequest(message) {

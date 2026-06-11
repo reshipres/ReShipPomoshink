@@ -134,6 +134,22 @@ describe('order answer quality', () => {
     assert.equal(result.handoffReason, 'order_requires_operator');
     assert.match(result.answer, /ручная проверка оператора/);
   });
+
+  it('answers order detail questions without exposing the full phone number', () => {
+    const result = handleMessage({
+      message: 'какой телефон указан?',
+      orderContext: {
+        orderNumber: '8_N',
+        status: 'PROCESSING',
+        recipientPhone: '+7 916 111 22 33',
+      },
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'answer');
+    assert.match(result.answer, /\+7 \*\*\* \*\*\* 22 33/);
+    assert.doesNotMatch(result.answer, /\+7 916 111 22 33/);
+  });
 });
 
 describe('low-friction product flow', () => {
