@@ -31,7 +31,10 @@ export const INTENTS = {
   AVAILABILITY: 'availability',
   PRICE_DISCOUNT: 'price_discount',
   PRODUCT_ADVICE: 'product_advice',
+  PRODUCT_SEARCH: 'product_search',
   PAYMENT: 'payment',
+  REVIEW: 'review',
+  INTERNATIONAL_DELIVERY: 'international_delivery',
   PICKUP: 'pickup',
   MODDING: 'modding',
   WARRANTY_OR_RETURN: 'warranty_or_return',
@@ -81,7 +84,7 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.SITE_ISSUE, 0.96);
   }
 
-  if (/(не проходит оплат|не могу оплат|не получается оплат|ошибка оплат|оплатил.*статус|статус.*не измен|деньги списал|списали.*деньги|двойн(ая|ое).*оплат|плат[её]ж.*не вижу|чек.*не приш)/i.test(message)) {
+  if (/(не проходит оплат|не могу оплат|не получается оплат|ошибка оплат|оплатил.*статус|статус.*не измен|деньги списал|списали.*деньги|двойн(ая|ое).*оплат|плат[её]ж.*не вижу|чек.*не приш|деньги.*(не.*вернул|не.*пришл|не.*компенс|возвращ)|когда.*деньги|деньги.*назад)/i.test(message)) {
     return match(INTENTS.BILLING_ISSUE, 0.98);
   }
 
@@ -119,7 +122,10 @@ export function classifyMessage(message, session = {}) {
   }
 
   if (messageLooksLikeCustomOrderRequest(message)) return match(INTENTS.CUSTOM_ORDER_REQUEST, 0.9);
+  if (messageLooksLikeInternationalDelivery(message)) return match(INTENTS.INTERNATIONAL_DELIVERY, 0.9);
   if (looksLikeStandaloneOrderLookup(message)) return match(INTENTS.ORDER_STATUS, 0.88, { hint: extractOrderHint(message) || message.trim() });
+  if (messageLooksLikeReview(message)) return match(INTENTS.REVIEW, 0.88);
+  if (messageLooksLikeProductSearch(message)) return match(INTENTS.PRODUCT_SEARCH, 0.86, { hint: extractProductHint(message) });
   if (/(оплат|сбп|карта|картой|номер карты|перевод|налож|чек|квитанц)/i.test(message)) return match(INTENTS.PAYMENT, 0.86);
   if (messageLooksLikeHowToOrder(message)) return match(INTENTS.ORDER_HELP, 0.9);
   if (messageLooksLikeDeliveryTerms(message)) return match(INTENTS.DELIVERY_TERMS, 0.88);
@@ -153,6 +159,9 @@ export function hasActionableRequest(message) {
     || messageLooksLikeDeliveryTerms(message)
     || messageLooksLikeSiteIssue(message)
     || messageLooksLikeCustomOrderRequest(message)
+    || messageLooksLikeInternationalDelivery(message)
+    || messageLooksLikeReview(message)
+    || messageLooksLikeProductSearch(message)
     || /(оплат|самовывоз|забрать|адрес|моддинг|гарант|вернуть|возврат|обмен|оператор|менеджер|помощ)/i.test(message);
 }
 
@@ -160,7 +169,7 @@ export function messageLooksLikeOrder(message) {
   if (messageLooksLikeAvailability(message) || messageLooksLikePrice(message) || messageLooksLikeProductAdvice(message)) return false;
   return Boolean(extractOrderHint(message))
     || hasPhoneNumber(message)
-    || /(заказ|статус|трек|трек-?номер|сдэк|cdek|достав|где.*посыл|едет|отправ|когда.*приед|когда.*получ|когда.*отправ)/i.test(message);
+    || /(заказ|статус|трек|трек-?номер|накладн|сдэк|cdek|достав|где.*посыл|едет|отправ|когда.*приед|когда.*получ|когда.*отправ)/i.test(message);
 }
 
 function messageLooksLikeAvailability(message) {
@@ -185,6 +194,19 @@ function messageLooksLikeProductAdvice(message) {
   return /(посовету|подскаж.*какой|что лучше|подойдет|совместим|размер|soft|xsoft|mid|свитч|switch|глайды|ковр|мышк|клавиатур)/i.test(message)
     && !messageLooksLikeAvailability(message)
     && !messageLooksLikePrice(message);
+}
+
+function messageLooksLikeProductSearch(message) {
+  return /(не могу найти|не наш[её]л|не вижу|не показывает|не показывается|пропал.*(с сайта|из поиска)|в поиске|на сайте).{0,80}(товар|модель|мыш|ковр|клавиатур|глайд|свитч|его|ее|её)|(?:товар|модель|мыш|ковр|клавиатур|глайд|свитч).{0,80}(не могу найти|не наш[её]л|не вижу|не показывает|не показывается|пропал)/i.test(message)
+    || (/(не могу найти|не наш[её]л|не вижу|не показывает|не показывается|пропал|в поиске|на сайте)/i.test(message) && looksLikeProductReference(message));
+}
+
+function messageLooksLikeReview(message) {
+  return /(где|как|куда|можно).{0,40}(оставить|оставлять|написать|посмотреть).{0,40}(отзыв|отзывы|обзор)|отзыв(ы)?.{0,50}(оставить|оставлять|написать|посмотреть|не вижу|не отображ|не дает|не даёт|где|куда)|(?:оставить|оставлять|написать|посмотреть).{0,40}(отзыв|отзывы|обзор)/i.test(message);
+}
+
+function messageLooksLikeInternationalDelivery(message) {
+  return /(беларус|рб\b|казахстан|снг|международн|за границ|доставк.*(минск|алматы|астан|бишкек|ереван|тбилиси)|нужен.*белорусск.*номер)/i.test(message);
 }
 
 function messageLooksLikeAcknowledgement(message) {

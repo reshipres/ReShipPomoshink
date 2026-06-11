@@ -107,5 +107,62 @@
         }
       }
     ]
+  },
+  {
+    "name": "site search problem asks for product hint",
+    "steps": [
+      {
+        "message": "я не могу найти wlmouse beast на сайте",
+        "expect": {
+          "intent": "product_search",
+          "action": "ask_clarifying_question",
+          "contextRequestType": "product",
+          "contextRequestStrategy": "by_hint",
+          "answerIncludes": ["Проверю этот товар", "не отображается на сайте"],
+          "answerExcludes": ["Что именно нужно?"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "refund money wait goes to payment review",
+    "steps": [
+      {
+        "message": "прошло больше 10 дней, деньги не вернулись",
+        "expect": {
+          "intent": "payment",
+          "action": "handoff_to_operator",
+          "handoffReason": "billing_issue",
+          "answerIncludes": ["проверили платеж"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "review question gets a direct answer",
+    "steps": [
+      {
+        "message": "где отзывы оставлять можно?",
+        "expect": {
+          "intent": "review",
+          "action": "answer",
+          "answerIncludes": ["карточке товара"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "international delivery goes to operator",
+    "steps": [
+      {
+        "message": "доставляете в Беларусь?",
+        "expect": {
+          "intent": "international_delivery",
+          "action": "handoff_to_operator",
+          "handoffReason": "international_delivery",
+          "answerIncludes": ["Международную доставку", "передаю оператору"]
+        }
+      }
+    ]
   }
 ]

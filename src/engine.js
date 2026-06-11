@@ -141,6 +141,9 @@ function routeDecision(classified, message, context) {
         'Позови оператора',
       ], classified.confidence);
 
+    case INTENTS.INTERNATIONAL_DELIVERY:
+      return handoff('international_delivery', 'Международную доставку и доставку по СНГ лучше проверить вручную: передаю оператору, чтобы подтвердили страну, способ доставки и ограничения.', 'international_delivery', 'Международная доставка', `Клиент спрашивает про международную доставку: "${message}".`);
+
     case INTENTS.AVAILABILITY:
       if (productContext) {
         return answer('availability', composeProductAvailabilityAnswer(productContext), ['Сколько стоит?', 'Как оформить?', 'Позови оператора'], classified.confidence);
@@ -149,6 +152,14 @@ function routeDecision(classified, message, context) {
         ? 'Проверю наличие по этому товару. Если он есть в каталоге, подтяну остаток; если нет, передам оператору.'
         : 'Проверю наличие. Пришлите ссылку на товар, артикул или точное название модели.', [
         'Проверить заказ',
+        'Позови оператора',
+      ], classified.confidence, { type: 'product', strategy: classified.hint ? 'by_hint' : 'ask_for_hint', hint: classified.hint || null });
+
+    case INTENTS.PRODUCT_SEARCH:
+      return ask('product_search', classified.hint
+        ? 'Проверю этот товар по базе. Если он не отображается на сайте, уточню наличие и актуальную карточку.'
+        : 'Проверю товар по базе. Напишите точное название модели, артикул или ссылку, если он не находится на сайте.', [
+        'Есть товар в наличии?',
         'Позови оператора',
       ], classified.confidence, { type: 'product', strategy: classified.hint ? 'by_hint' : 'ask_for_hint', hint: classified.hint || null });
 
@@ -181,6 +192,12 @@ function routeDecision(classified, message, context) {
 
     case INTENTS.PAYMENT:
       return answer('payment', 'Оплата доступна картой МИР или через СБП на сайте. Наложенный платеж сейчас недоступен. Если деньги списались, а заказ не обновился, передам оператору.', ['Где мой заказ?', 'Позови оператора'], classified.confidence);
+
+    case INTENTS.REVIEW:
+      return answer('review', 'Отзывы обычно можно смотреть и оставлять в карточке товара или на площадке, где оформлялся заказ. Если отзыв не отображается или нужен отзыв по конкретному заказу, передам оператору.', [
+        'Позови оператора',
+        'Где мой заказ?',
+      ], classified.confidence);
 
     case INTENTS.PICKUP:
       return answer('pickup', 'Самовывоз в Москве: Гончарный проезд, 8/40, м. Таганская. Выдача Пн-Вс с 14:00 до 16:00 после подтверждения готовности заказа.', ['Проверь мой заказ', 'Позови оператора'], classified.confidence);
