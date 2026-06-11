@@ -186,6 +186,10 @@ function assertScenarioExpectation(result, expectation) {
     assert.equal(result.handoffReason, expectation.handoffReason);
   }
 
+  if (Object.hasOwn(expectation, 'appendToExistingHandoff')) {
+    assert.equal(Boolean(result.appendToExistingHandoff), expectation.appendToExistingHandoff);
+  }
+
   if (expectation.contextRequestType) {
     assert.equal(result.contextRequest?.type, expectation.contextRequestType);
   }

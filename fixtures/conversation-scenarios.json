@@ -210,5 +210,52 @@
         }
       }
     ]
+  },
+  {
+    "name": "details after human handoff are appended to same request",
+    "steps": [
+      {
+        "message": "позови оператора",
+        "expect": {
+          "intent": "human_requested",
+          "action": "handoff_to_operator",
+          "handoffReason": "requested_human"
+        }
+      },
+      {
+        "message": "номер заказа 12345",
+        "expect": {
+          "intent": "human_requested",
+          "action": "handoff_to_operator",
+          "handoffReason": "requested_human",
+          "appendToExistingHandoff": true,
+          "answerIncludes": ["Добавил это к обращению", "повторять заново не нужно"],
+          "answerExcludes": ["Пришлите номер заказа"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "custom order details after handoff are appended",
+    "steps": [
+      {
+        "message": "можно заказать по ссылке https://example.com/item/123",
+        "expect": {
+          "intent": "custom_order_request",
+          "action": "handoff_to_operator",
+          "handoffReason": "custom_order_request"
+        }
+      },
+      {
+        "message": "размер m, цвет черный, 1 штука",
+        "expect": {
+          "intent": "custom_order_request",
+          "action": "handoff_to_operator",
+          "handoffReason": "custom_order_request",
+          "appendToExistingHandoff": true,
+          "answerIncludes": ["Добавил это к обращению"]
+        }
+      }
+    ]
   }
 ]

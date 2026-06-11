@@ -25,6 +25,13 @@ export function handoff(intent, text, reason, subject, summary, confidence = 0.9
   };
 }
 
+export function appendToHandoff(intent, text, reason, subject, summary, confidence = 0.98) {
+  return {
+    ...handoff(intent, text, reason, subject, summary, confidence),
+    appendToExistingHandoff: true,
+  };
+}
+
 function decision(action, intent, confidence, text, needsHandoff, handoffReason, suggestedReplies) {
   return {
     action,

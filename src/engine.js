@@ -1,5 +1,6 @@
 import { classifyMessage, INTENTS } from './intents.js';
 import {
+  appendToHandoff,
   answer,
   ask,
   composeOrderStatusAnswer,
@@ -29,7 +30,22 @@ export function handleMessage({ message, session = {}, orderContext = null, prod
   }
 
   const classified = classifyMessage(text, session);
+  const activeHandoffDecision = maybeAppendToActiveHandoff(classified, text, session);
+  if (activeHandoffDecision) {
+    return {
+      ...activeHandoffDecision,
+      nextSession: buildNextSession(session, activeHandoffDecision),
+    };
+  }
+
   const decision = routeDecision(classified, text, { session, orderContext, productContext });
+  return {
+    ...decision,
+    nextSession: buildNextSession(session, decision),
+  };
+}
+
+function buildNextSession(session, decision) {
   const nextSession = {
     ...session,
     lastIntent: decision.intent,
@@ -46,10 +62,69 @@ export function handleMessage({ message, session = {}, orderContext = null, prod
     delete nextSession.pendingRequest;
   }
 
-  return {
-    ...decision,
-    nextSession,
-  };
+  if (decision.needsHandoff) {
+    nextSession.activeHandoff = {
+      intent: decision.intent,
+      reason: decision.handoffReason,
+      subject: decision.ticketSubject || 'Вопрос оператору',
+    };
+  }
+
+  return nextSession;
+}
+
+function maybeAppendToActiveHandoff(classified, message, session) {
+  const activeHandoff = session.activeHandoff;
+  if (!activeHandoff?.reason) return null;
+
+  if ([
+    INTENTS.ACKNOWLEDGEMENT,
+    INTENTS.GREETING,
+    INTENTS.ASSISTANT_IDENTITY,
+  ].includes(classified.intent)) {
+    return null;
+  }
+
+  if (!looksLikeHandoffDetail(message, classified, activeHandoff)) return null;
+
+  return appendToHandoff(
+    activeHandoff.intent || 'operator_context',
+    'Добавил это к обращению оператору. Контекст сохранен, повторять заново не нужно.',
+    activeHandoff.reason,
+    activeHandoff.subject || 'Дополнение к обращению',
+    `Клиент дополнил обращение: "${message}".`,
+  );
+}
+
+function looksLikeHandoffDetail(message, classified, activeHandoff) {
+  const text = String(message || '').trim();
+  if (!text) return false;
+
+  if (activeHandoff.reason === 'requested_human') return true;
+
+  if (/(еще|ещё|также|дополн|вот|номер|телефон|трек|накладн|заказ|адрес|пвз|сдэк|cdek|ссылка|размер|цвет|модель|фото|скрин|чек|квитанц)/i.test(text)) {
+    return true;
+  }
+
+  if (/https?:\/\/|www\.|\+?\d[\d\s().-]{8,}\d|rs-\d{8}-[a-z0-9]+|\b\d{4,}\b/i.test(text)) {
+    return true;
+  }
+
+  if (activeHandoff.reason === 'custom_order_request' && text.length <= 160) {
+    return true;
+  }
+
+  return [
+    INTENTS.ORDER_STATUS,
+    INTENTS.ORDER_CHANGE,
+    INTENTS.DELIVERY_DATA,
+    INTENTS.BILLING_ISSUE,
+    INTENTS.SITE_ISSUE,
+    INTENTS.DEFECT_OR_DAMAGE,
+    INTENTS.REFUND_OR_RETURN,
+    INTENTS.CUSTOM_ORDER_REQUEST,
+    INTENTS.INTERNATIONAL_DELIVERY,
+  ].includes(classified.intent);
 }
 
 function routeDecision(classified, message, context) {
