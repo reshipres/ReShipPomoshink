@@ -37,6 +37,7 @@
   { "message": "товар пришел поврежденный", "intent": "warranty_or_return", "action": "handoff_to_operator" },
   { "message": "есть ли коврик в наличии", "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "будете завозить новый дроп wlmouse?", "intent": "availability", "action": "ask_clarifying_question" },
+  { "message": "когда поступит?", "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "какие расцветки есть?", "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "wlmouse beast max", "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "я не могу найти wlmouse beast на сайте", "intent": "product_search", "action": "ask_clarifying_question" },

@@ -590,6 +590,69 @@ describe('customer-style product lookup conversations', () => {
     assert.doesNotMatch(third.answer, /Пришлите ссылку/);
   });
 
+  it('answers restock timing follow-up when the product is already available', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'когда завоз?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'availability');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /WLmouse Beast Max Black/);
+    assert.match(second.answer, /есть 3 шт/);
+    assert.doesNotMatch(second.answer, /Я могу проверить/);
+  });
+
+  it('hands off restock timing follow-up for preorder products without guessing a date', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast x mini есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'когда будет?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'availability');
+    assert.equal(second.action, 'handoff_to_operator');
+    assert.equal(second.handoffReason, 'restock_timing');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /WLmouse Beast X Mini/);
+    assert.match(second.answer, /под заказ\/предзаказ/);
+    assert.match(second.answer, /Точного срока поступления/);
+  });
+
+  it('hands off restock timing follow-up for inactive products instead of falling back', () => {
+    const first = handleCustomerMessage({
+      message: 'lamzu atlantis mini pro есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'когда поступит?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'availability');
+    assert.equal(second.action, 'handoff_to_operator');
+    assert.equal(second.handoffReason, 'restock_timing');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /LAMZU Atlantis Mini Pro/);
+    assert.match(second.answer, /не активен/);
+    assert.match(second.answer, /Точного срока поступления/);
+    assert.doesNotMatch(second.answer, /Я могу проверить/);
+  });
+
   it('does not ask for a link when another color is missing for current product', () => {
     const first = handleCustomerMessage({
       message: 'wlmouse beast max есть?',

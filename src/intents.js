@@ -164,7 +164,12 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.ORDER_HELP, 0.9, hint ? { hint } : {});
   }
   if (messageLooksLikeDeliveryTerms(message)) return match(INTENTS.DELIVERY_TERMS, 0.88);
-  if (messageLooksLikeAvailability(message)) return match(INTENTS.AVAILABILITY, 0.88, { hint: extractProductHint(message) });
+  if (messageLooksLikeAvailability(message)) {
+    return match(INTENTS.AVAILABILITY, 0.88, {
+      hint: extractProductHint(message),
+      productDetail: extractProductAvailabilityDetail(message),
+    });
+  }
   if (messageLooksLikePrice(message)) return match(INTENTS.PRICE_DISCOUNT, 0.86, { hint: extractProductHint(message) });
   if (messageLooksLikeProductAdvice(message)) return match(INTENTS.PRODUCT_ADVICE, 0.76);
   if (looksLikeShortProductReference(message)) return match(INTENTS.AVAILABILITY, 0.72, { hint: extractProductHint(message) });
@@ -246,7 +251,15 @@ export function messageLooksLikeOrder(message) {
 }
 
 function messageLooksLikeAvailability(message) {
-  return /(в наличии|в нале|на складе|есть ли|есть\?|есть\s+(черн|бел|красн|син|розов|сер|фиолет|желт|зел|оранж)|какие\s+(цвета|расцветки)|какой\s+цвет|осталось|остаток|когда будет|появится|поступлен|поставка|завоз|дроп|предзаказ|под заказ|ресток|restock|доступен|можно заказать|будете завозить|привезете|привезёте)/i.test(message);
+  return /(в наличии|в нале|на складе|есть ли|есть\?|есть\s+(черн|бел|красн|син|розов|сер|фиолет|желт|зел|оранж)|какие\s+(цвета|расцветки)|какой\s+цвет|осталось|остаток|когда будет|появится|поступит|поступлен|поступлени|ожидается|ожидаете|поставка|завоз|дроп|предзаказ|под заказ|ресток|restock|доступен|можно заказать|будете завозить|привезете|привезёте)/i.test(message);
+}
+
+function extractProductAvailabilityDetail(message) {
+  if (/(когда.{0,40}(будет|поступит|поступлени|поставка|завоз|ресток|restock|дроп)|поступит|поступлени|ожидается|ожидаете|поставка|завоз|ресток|restock|будете завозить|привезете|привезёте)/i.test(message)) {
+    return 'restock_timing';
+  }
+
+  return null;
 }
 
 function messageLooksLikeHowToOrder(message) {

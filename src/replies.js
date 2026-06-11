@@ -253,6 +253,31 @@ export function composeProductVariantSummaryAnswer(product) {
   return lines.join(' ');
 }
 
+export function composeProductRestockTimingAnswer(product, { handoff = false } = {}) {
+  const name = product?.name || 'этому товару';
+  const quantity = product?.quantity ?? 0;
+  const isPreorder = isPreorderProduct(product || {});
+
+  if (product?.isActive !== false && quantity > 0 && !isPreorder) {
+    return `По ${name} сейчас в базе есть ${quantity} шт. Отдельный срок поступления не нужен. Если ждете другой цвет или версию, напишите вариант или передам вопрос оператору.`;
+  }
+
+  const lines = [`По ${name}`];
+  if (isPreorder) {
+    lines.push('вижу статус под заказ/предзаказ.');
+  } else if (product?.isActive === false) {
+    lines.push('товар сейчас не активен в каталоге.');
+  } else {
+    lines.push('свободного остатка сейчас не вижу.');
+  }
+
+  lines.push(handoff
+    ? 'Точного срока поступления в базе нет. Передаю оператору, чтобы проверили ближайший завоз.'
+    : 'Точного срока поступления в базе нет. Если нужен срок до оплаты, передам оператору.');
+
+  return lines.join(' ');
+}
+
 export function supportFallbackAnswer() {
   return `Сейчас не смог обработать сообщение. Можно создать тикет вручную или написать в Telegram ${SUPPORT_CONTACTS.telegram}.`;
 }

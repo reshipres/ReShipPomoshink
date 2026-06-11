@@ -8,6 +8,7 @@ import {
   composeProductAvailabilityAnswer,
   composeProductOrderHelpAnswer,
   composeProductPriceAnswer,
+  composeProductRestockTimingAnswer,
   composeProductVariantSummaryAnswer,
   handoff,
 } from './replies.js';
@@ -248,6 +249,10 @@ function routeDecision(classified, message, context) {
         const lookupDecision = composeProductLookupDecision(productContext, 'availability', classified.confidence);
         if (lookupDecision) return lookupDecision;
 
+        if (classified.productDetail === 'restock_timing') {
+          return composeProductRestockTimingDecision(productContext, classified.confidence);
+        }
+
         return answer('availability', composeProductAvailabilityAnswer(productContext), ['Сколько стоит?', 'Как оформить?', 'Позови оператора'], classified.confidence);
       }
       return ask('availability', classified.hint
@@ -427,6 +432,29 @@ function composeProductLookupDecision(productContext, intent, confidence) {
   }
 
   return null;
+}
+
+function composeProductRestockTimingDecision(product, confidence) {
+  const quantity = product.quantity ?? 0;
+  const isPreorder = /подзаказ|предзаказ/i.test(product.sklad || '') || (product.preorderPrice ?? 0) > 0;
+  const needsManualTiming = product.isActive === false || quantity <= 0 || isPreorder;
+
+  if (needsManualTiming) {
+    return handoff(
+      'availability',
+      composeProductRestockTimingAnswer(product, { handoff: true }),
+      'restock_timing',
+      'Срок поступления товара',
+      `Клиент спрашивает срок поступления товара: "${product.name || 'товар без названия'}".`,
+      confidence,
+    );
+  }
+
+  return answer('availability', composeProductRestockTimingAnswer(product), [
+    'Сколько стоит?',
+    'Проверить другой товар',
+    'Позови оператора',
+  ], confidence);
 }
 
 function productNeedsManualOrderHelp(product) {
