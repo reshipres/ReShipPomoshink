@@ -235,6 +235,24 @@ export function composeProductOrderHelpAnswer(product) {
   return lines.join(' ');
 }
 
+export function composeProductVariantSummaryAnswer(product) {
+  const name = product?.name || 'текущий товар';
+  const lines = [`По текущей модели в базе вижу: ${name}.`];
+  const quantity = product?.quantity ?? 0;
+  const isPreorder = isPreorderProduct(product || {});
+
+  if (quantity > 0 && !isPreorder) {
+    lines.push(quantity <= 5 ? `Сейчас доступно ${quantity} шт.` : 'Сейчас товар есть в наличии.');
+  } else if (isPreorder) {
+    lines.push('Это под заказ/предзаказ, точный срок подтвердится при оформлении или у оператора.');
+  } else {
+    lines.push('Свободного остатка сейчас не вижу.');
+  }
+
+  lines.push('Других цветов или версий по этой модели в базе не нашел. Если нужен конкретный вариант, напишите его или передам вопрос оператору.');
+  return lines.join(' ');
+}
+
 export function supportFallbackAnswer() {
   return `Сейчас не смог обработать сообщение. Можно создать тикет вручную или написать в Telegram ${SUPPORT_CONTACTS.telegram}.`;
 }

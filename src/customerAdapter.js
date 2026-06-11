@@ -86,6 +86,9 @@ function resolveProductContext(result, products, session) {
       return findLastProductContext(session, products);
     }
 
+    const variantSummaryContext = resolveProductVariantSummaryContext(request.hint, session, products);
+    if (variantSummaryContext) return variantSummaryContext;
+
     const productContext = findProductContext(request.hint, products);
     if (productContext.lookupStatus === 'multiple') {
       return resolveContextualProductVariant(request.hint, session, products) || productContext;
@@ -104,6 +107,19 @@ function resolveProductContext(result, products, session) {
   }
 
   return null;
+}
+
+function resolveProductVariantSummaryContext(hint, session, products) {
+  if (!messageLooksLikeProductVariantSummary(hint)) return null;
+
+  const baseProduct = findLastProductContext(session, products);
+  if (!baseProduct) return null;
+
+  return {
+    lookupStatus: 'variant_summary',
+    variantRequest: hint,
+    baseProduct,
+  };
 }
 
 function resolveContextualProductVariant(hint, session, products) {
@@ -219,9 +235,13 @@ function isFoundOrderContext(orderContext) {
 
 function isFoundProductContext(productContext) {
   const lookupStatus = productContext?.lookupStatus || productContext?.resultStatus || null;
-  if (['not_found', 'multiple', 'ambiguous', 'variant_not_found'].includes(lookupStatus)) return false;
+  if (['not_found', 'multiple', 'ambiguous', 'variant_not_found', 'variant_summary'].includes(lookupStatus)) return false;
 
   return Boolean(productContext?.name || productContext?.slug);
+}
+
+function messageLooksLikeProductVariantSummary(message) {
+  return /((какие|какой|есть|доступн).{0,32}(цвет|расцветк|вариант)|(цвет|расцветк|вариант).{0,32}(есть|доступн|какие|какой)|друг(ие|ой|ая|ое)\s+(цвет|расцветк|вариант))/i.test(message);
 }
 
 function messageLooksLikeProductVariantFollowup(message) {

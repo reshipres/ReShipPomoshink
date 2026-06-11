@@ -8,6 +8,7 @@ import {
   composeProductAvailabilityAnswer,
   composeProductOrderHelpAnswer,
   composeProductPriceAnswer,
+  composeProductVariantSummaryAnswer,
   handoff,
 } from './replies.js';
 
@@ -392,6 +393,14 @@ function composeOrderLookupDecision(orderContext, classified, message) {
 
 function composeProductLookupDecision(productContext, intent, confidence) {
   const lookupStatus = productContext.lookupStatus || productContext.resultStatus || null;
+
+  if (lookupStatus === 'variant_summary') {
+    return answer(intent, composeProductVariantSummaryAnswer(productContext.baseProduct), [
+      'Сколько стоит?',
+      'Проверить другой товар',
+      'Позови оператора',
+    ], confidence);
+  }
 
   if (lookupStatus === 'variant_not_found') {
     const baseProduct = productContext.baseProduct || {};

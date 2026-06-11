@@ -542,6 +542,54 @@ describe('customer-style product lookup conversations', () => {
     assert.doesNotMatch(second.answer, /Не нашел товар/);
   });
 
+  it('answers available colors for the previously found product without asking for a link', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'какие цвета есть?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'availability');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'variant_summary');
+    assert.equal(second.nextSession.pendingRequest, undefined);
+    assert.match(second.answer, /WLmouse Beast Max Black/);
+    assert.match(second.answer, /Других цветов/);
+    assert.doesNotMatch(second.answer, /Пришлите ссылку/);
+    assert.doesNotMatch(second.answer, /такой вариант/);
+  });
+
+  it('answers color list follow-up after resolving an ambiguous product hint', () => {
+    const first = handleCustomerMessage({
+      message: 'beast есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'beast max black',
+      session: first.nextSession,
+      products,
+    });
+
+    const third = handleCustomerMessage({
+      message: 'какие расцветки?',
+      session: second.nextSession,
+      products,
+    });
+
+    assert.equal(third.intent, 'availability');
+    assert.equal(third.action, 'answer');
+    assert.equal(third.systemLookup.status, 'variant_summary');
+    assert.match(third.answer, /WLmouse Beast Max Black/);
+    assert.match(third.answer, /Других цветов/);
+    assert.doesNotMatch(third.answer, /Пришлите ссылку/);
+  });
+
   it('does not ask for a link when another color is missing for current product', () => {
     const first = handleCustomerMessage({
       message: 'wlmouse beast max есть?',
