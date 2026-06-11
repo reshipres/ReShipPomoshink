@@ -26,6 +26,13 @@ describe('system order lookup', () => {
     assert.equal(order.recipientLastName, 'Петрова');
   });
 
+  it('finds an order by short CRM number variants', () => {
+    assert.equal(findOrderContext('6_L', orders).crmOrderNumber, '6_L');
+    assert.equal(findOrderContext('№6_L', orders).crmOrderNumber, '6_L');
+    assert.equal(findOrderContext('#6_L', orders).crmOrderNumber, '6_L');
+    assert.equal(findOrderContext('номер заказа №6_L', orders).crmOrderNumber, '6_L');
+  });
+
   it('finds an order by phone number', () => {
     const order = findOrderContext('+7 999 123 45 67', orders);
 
@@ -131,6 +138,18 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(result.systemLookup.status, 'found');
     assert.match(result.answer, /Нашел заказ #6_L/);
     assert.match(result.answer, /Трек CDEK: 1234567890/);
+  });
+
+  it('answers order status when customer sends a short CRM number', () => {
+    for (const message of ['6_L', '№6_L', '#6_L', 'заказ 6_L', 'номер заказа №6_L']) {
+      const result = handleCustomerMessage({ message, orders });
+
+      assert.equal(result.intent, 'order_status');
+      assert.equal(result.action, 'answer');
+      assert.equal(result.systemLookup.status, 'found');
+      assert.match(result.answer, /Нашел заказ #6_L/);
+      assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
+    }
   });
 
   it('does not confuse a CDEK tracking question with delivery data', () => {

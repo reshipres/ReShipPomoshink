@@ -31,6 +31,7 @@ export function hasExternalUrl(message = '') {
 export function extractOrderHint(message = '') {
   const patterns = [
     /RS-\d{8}-[A-Z0-9]{5,32}/i,
+    /(?:№|#)?\s*\b\d{1,8}_[A-ZА-Я0-9]{1,12}\b/i,
     /\+?\d[\d\s().-]{8,}\d/i,
     /\b\d{3,8}R\b/i,
     /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
@@ -39,7 +40,7 @@ export function extractOrderHint(message = '') {
 
   for (const pattern of patterns) {
     const match = String(message).match(pattern);
-    if (match) return match[0].trim();
+    if (match) return normalizeOrderHint(match[0]);
   }
 
   return null;
@@ -129,4 +130,8 @@ export function looksLikeLookupFragment(message = '') {
 
   const words = text.split(/\s+/).filter(Boolean);
   return text.length >= 2 && text.length <= 80 && words.length <= 4 && /[a-zа-я0-9]/i.test(text);
+}
+
+function normalizeOrderHint(value) {
+  return String(value || '').trim().replace(/^[#№]\s*/u, '');
 }

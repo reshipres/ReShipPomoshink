@@ -105,5 +105,5 @@ function findNameMatches(query, orders) {
 }
 
 function normalizeIdentifier(value) {
-  return String(value || '').trim().toLowerCase().replace(/\s+/g, '');
+  return String(value || '').trim().toLowerCase().replace(/^[#№]\s*/u, '').replace(/\s+/g, '');
 }
