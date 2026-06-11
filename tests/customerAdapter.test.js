@@ -115,7 +115,7 @@ describe('customer-style order lookup conversations', () => {
     });
 
     const second = handleCustomerMessage({
-      message: 'другой',
+      message: 'а другой?',
       session: first.nextSession,
       customer: { id: 'customer-ivanov' },
       orders,
@@ -124,6 +124,7 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(second.intent, 'order_status');
     assert.equal(second.action, 'ask_clarifying_question');
     assert.equal(second.systemLookup, undefined);
+    assert.equal(second.nextSession.lastOrderLookup, undefined);
     assert.match(second.answer, /Если нужен другой заказ/);
   });
 
@@ -138,6 +139,67 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(result.systemLookup.status, 'found');
     assert.match(result.answer, /Нашел заказ #6_L/);
     assert.match(result.answer, /Трек CDEK: 1234567890/);
+    assert.equal(result.nextSession.lastOrderLookup.crmOrderNumber, '6_L');
+  });
+
+  it('answers delivery follow-up without asking for order id again', () => {
+    const first = handleCustomerMessage({
+      message: '1234567890',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а когда приедет?',
+      session: first.nextSession,
+      orders,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /Нашел заказ #6_L/);
+    assert.doesNotMatch(second.answer, /Пришлите номер заказа/);
+    assert.doesNotMatch(second.answer, /Не нашел заказ/);
+  });
+
+  it('answers pickup follow-up after a short order number', () => {
+    const first = handleCustomerMessage({
+      message: '6_L',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а где забрать?',
+      session: first.nextSession,
+      orders,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /Нашел заказ #6_L/);
+    assert.match(second.answer, /Способ получения/);
+  });
+
+  it('answers follow-up from the latest known customer order', () => {
+    const first = handleCustomerMessage({
+      message: 'где мой заказ',
+      customer: { id: 'customer-ivanov' },
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'когда доставка?',
+      session: first.nextSession,
+      customer: { id: 'customer-ivanov' },
+      orders,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /Нашел заказ #7_M/);
+    assert.doesNotMatch(second.answer, /Не нашел заказ/);
   });
 
   it('answers order status when customer sends a short CRM number', () => {

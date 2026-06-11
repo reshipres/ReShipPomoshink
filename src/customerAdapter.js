@@ -1,6 +1,7 @@
 import { handleMessage } from './engine.js';
 import { findLatestOrderContext, findOrderContext } from './orderLookup.js';
 import { findProductContext } from './productLookup.js';
+import { extractOrderHint } from './normalize.js';
 
 export function handleCustomerMessage({
   message,
@@ -10,7 +11,7 @@ export function handleCustomerMessage({
   products = [],
 } = {}) {
   const first = handleMessage({ message, session });
-  const orderContext = resolveOrderContext(first, message, customer, orders);
+  const orderContext = resolveOrderContext(first, message, customer, orders, session);
 
   if (orderContext) {
     const second = handleMessage({
@@ -21,6 +22,7 @@ export function handleCustomerMessage({
 
     return {
       ...second,
+      nextSession: enrichSessionWithOrder(second.nextSession, orderContext),
       systemLookup: {
         type: 'order',
         status: orderContext.lookupStatus || 'found',
@@ -45,23 +47,35 @@ export function handleCustomerMessage({
     };
   }
 
-  return first;
+  return {
+    ...first,
+    nextSession: clearLastOrderOnSwitch(first.nextSession, first.contextRequest),
+  };
 }
 
-function resolveOrderContext(result, message, customer, orders) {
+function resolveOrderContext(result, message, customer, orders, session) {
   const request = result.contextRequest;
   if (request?.type !== 'order') return null;
 
   const hint = request.hint || null;
   if (!hint) {
     if (request.strategy === 'latest_or_hint' || request.strategy === 'latest') {
-      return findLatestOrderContext(customer, orders);
+      return findLatestOrderContext(customer, orders) || findLastOrderContext(session, orders);
     }
 
     return null;
   }
 
-  return findOrderContext(hint || message, orders);
+  const directMatch = findOrderContext(hint || message, orders);
+  if (directMatch.lookupStatus !== 'not_found') return directMatch;
+
+  if (messageLooksLikeOrderFollowup(message)) {
+    return findLastOrderContext(session, orders)
+      || findLatestOrderContext(customer, orders)
+      || directMatch;
+  }
+
+  return directMatch;
 }
 
 function resolveProductContext(result, products) {
@@ -69,4 +83,66 @@ function resolveProductContext(result, products) {
   if (request?.type !== 'product' || !request.hint) return null;
 
   return findProductContext(request.hint, products);
+}
+
+function enrichSessionWithOrder(session, orderContext) {
+  if (!isFoundOrderContext(orderContext)) return session;
+
+  return {
+    ...session,
+    lastOrderLookup: {
+      orderNumber: orderContext.orderNumber || null,
+      crmOrderNumber: orderContext.crmOrderNumber || null,
+      shortId: orderContext.shortId || null,
+      orderId: orderContext.orderId || null,
+      cdekTrackingNumber: orderContext.cdekTrackingNumber || null,
+    },
+  };
+}
+
+function clearLastOrderOnSwitch(session, contextRequest) {
+  if (contextRequest?.type === 'order' && contextRequest.strategy === 'ask_for_hint') {
+    const nextSession = { ...session };
+    delete nextSession.lastOrderLookup;
+    return nextSession;
+  }
+
+  return session;
+}
+
+function findLastOrderContext(session, orders) {
+  const lookup = session?.lastOrderLookup || {};
+  const identifiers = [
+    lookup.crmOrderNumber,
+    lookup.shortId,
+    lookup.orderNumber,
+    lookup.orderId,
+    lookup.cdekTrackingNumber,
+  ].filter(Boolean);
+
+  for (const identifier of identifiers) {
+    const orderContext = findOrderContext(identifier, orders);
+    if (orderContext.lookupStatus !== 'not_found' && orderContext.lookupStatus !== 'multiple') {
+      return orderContext;
+    }
+  }
+
+  return null;
+}
+
+function isFoundOrderContext(orderContext) {
+  const lookupStatus = orderContext?.lookupStatus || orderContext?.resultStatus || null;
+  if (['not_found', 'multiple', 'ambiguous'].includes(lookupStatus)) return false;
+
+  return Boolean(orderContext?.orderNumber
+    || orderContext?.crmOrderNumber
+    || orderContext?.shortId
+    || orderContext?.orderId
+    || orderContext?.cdekTrackingNumber);
+}
+
+function messageLooksLikeOrderFollowup(message) {
+  if (extractOrderHint(message)) return false;
+
+  return /(когда|приед|прид[её]т|доставк|где|забрать|получ|выдач|сдэк|cdek|трек|статус|едет|ид[её]т|самовывоз|адрес|пункт|пвз)/i.test(message);
 }

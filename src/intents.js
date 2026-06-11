@@ -122,7 +122,7 @@ export function classifyMessage(message, session = {}) {
     return match(intent, 0.9, { hint: extractProductSlug(message) || message.trim() });
   }
 
-  if (['order_status', 'delivery_terms'].includes(lastIntent) && /^(другой|другая|другое|другие|еще|ещё|не этот|не эта|не то|другой заказ|другую посылку)(?=$|\s)/i.test(message.trim())) {
+  if (['order_status', 'delivery_terms'].includes(lastIntent) && /^(?:а\s+)?(другой|другая|другое|другие|еще|ещё|не этот|не эта|не то|другой заказ|другую посылку)(?:$|\s|\?|\!|\.)/i.test(message.trim())) {
     return match(INTENTS.ORDER_SWITCH, 0.95);
   }
 
