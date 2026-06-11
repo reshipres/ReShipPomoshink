@@ -68,6 +68,12 @@ function buildNextSession(session, decision) {
       reason: decision.handoffReason,
       subject: decision.ticketSubject || 'Вопрос оператору',
     };
+  } else if ([
+    'acknowledgement',
+    'greeting',
+    'assistant_identity',
+  ].includes(decision.intent)) {
+    delete nextSession.activeHandoff;
   }
 
   return nextSession;

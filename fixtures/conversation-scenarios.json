@@ -257,5 +257,72 @@
         }
       }
     ]
+  },
+  {
+    "name": "acknowledgement closes human handoff context",
+    "steps": [
+      {
+        "message": "позови оператора",
+        "expect": {
+          "intent": "human_requested",
+          "action": "handoff_to_operator",
+          "handoffReason": "requested_human"
+        }
+      },
+      {
+        "message": "спасибо",
+        "expect": {
+          "intent": "acknowledgement",
+          "action": "answer"
+        }
+      },
+      {
+        "message": "где мой заказ",
+        "expect": {
+          "intent": "order_status",
+          "action": "ask_clarifying_question",
+          "contextRequestType": "order",
+          "answerExcludes": ["Добавил это к обращению"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "acknowledgement closes custom order handoff context",
+    "steps": [
+      {
+        "message": "можно заказать по ссылке https://example.com/item/123",
+        "expect": {
+          "intent": "custom_order_request",
+          "action": "handoff_to_operator",
+          "handoffReason": "custom_order_request"
+        }
+      },
+      {
+        "message": "размер m, цвет черный",
+        "expect": {
+          "intent": "custom_order_request",
+          "action": "handoff_to_operator",
+          "handoffReason": "custom_order_request",
+          "appendToExistingHandoff": true
+        }
+      },
+      {
+        "message": "спасибо",
+        "expect": {
+          "intent": "acknowledgement",
+          "action": "answer"
+        }
+      },
+      {
+        "message": "где мой заказ",
+        "expect": {
+          "intent": "order_status",
+          "action": "ask_clarifying_question",
+          "contextRequestType": "order",
+          "answerExcludes": ["Добавил это к обращению"]
+        }
+      }
+    ]
   }
 ]
