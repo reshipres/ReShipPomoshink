@@ -156,6 +156,25 @@ describe('low-friction product flow', () => {
     assert.equal(result.contextRequest.strategy, 'by_hint');
     assert.match(result.answer, /по этому товару/);
   });
+
+  it('uses product context when customer wants to order the found item', () => {
+    const result = handleMessage({
+      message: 'тогда беру',
+      productContext: {
+        name: 'WLmouse Beast Max Black',
+        slug: 'wlmouse-beast-max-black',
+        quantity: 3,
+        price: 15990,
+      },
+    });
+
+    assert.equal(result.intent, 'order_help');
+    assert.equal(result.action, 'answer');
+    assert.match(result.answer, /WLmouse Beast Max Black/);
+    assert.match(result.answer, /https:\/\/reship\.pro\/product\/wlmouse-beast-max-black/);
+    assert.match(result.answer, /3 шт/);
+    assert.doesNotMatch(result.answer, /откройте карточку товара/);
+  });
 });
 
 describe('customer conversation scenarios', () => {

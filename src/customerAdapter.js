@@ -81,13 +81,20 @@ function resolveOrderContext(result, message, customer, orders, session) {
 
 function resolveProductContext(result, products, session) {
   const request = result.contextRequest;
-  if (request?.type !== 'product') return null;
+  if (request?.type === 'product') {
+    if (!request.hint) {
+      return findLastProductContext(session, products);
+    }
 
-  if (!request.hint) {
+    return findProductContext(request.hint, products);
+  }
+
+  if (result.intent === 'order_help') {
+    if (result.hint) return findProductContext(result.hint, products);
     return findLastProductContext(session, products);
   }
 
-  return findProductContext(request.hint, products);
+  return null;
 }
 
 function enrichSessionWithProduct(session, productContext) {

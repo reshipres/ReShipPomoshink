@@ -117,6 +117,29 @@ export function composeProductPriceAnswer(product) {
   return `По товару ${product.name}: ${parts.join(', ')}. Итог с доставкой считается в корзине.`;
 }
 
+export function composeProductOrderHelpAnswer(product) {
+  const name = product.name || 'этот товар';
+  const lines = [];
+  const productUrl = product.slug ? `https://reship.pro/product/${product.slug}` : null;
+  const quantity = product.quantity ?? 0;
+  const isPreorder = isPreorderProduct(product);
+
+  lines.push(productUrl
+    ? `Можно оформить ${name} через карточку: ${productUrl}.`
+    : `Можно оформить ${name} через карточку товара.`);
+
+  if (quantity > 0 && !isPreorder) {
+    lines.push(quantity <= 5 ? `Сейчас по базе вижу ${quantity} шт.` : 'Сейчас по базе товар в наличии.');
+  } else if (isPreorder) {
+    lines.push('Сейчас это под заказ/предзаказ, срок подтвердится при оформлении или у оператора.');
+  }
+
+  lines.push('Добавьте товар в корзину, выберите доставку или самовывоз и оплатите на сайте.');
+  lines.push('Финальная цена и остаток проверяются в корзине перед оплатой.');
+
+  return lines.join(' ');
+}
+
 export function supportFallbackAnswer() {
   return `Сейчас не смог обработать сообщение. Можно создать тикет вручную или написать в Telegram ${SUPPORT_CONTACTS.telegram}.`;
 }
@@ -127,6 +150,10 @@ function normalizeStatus(value) {
 
 function isPublicPriceReliable(value) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 10;
+}
+
+function isPreorderProduct(product) {
+  return /подзаказ|предзаказ/i.test(product.sklad || '') || (product.preorderPrice ?? 0) > 0;
 }
 
 function formatMoney(value) {

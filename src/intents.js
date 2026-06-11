@@ -118,7 +118,9 @@ export function classifyMessage(message, session = {}) {
       ? INTENTS.PRICE_DISCOUNT
       : pendingRequest.intent === INTENTS.PRODUCT_SEARCH
         ? INTENTS.PRODUCT_SEARCH
-        : INTENTS.AVAILABILITY;
+        : pendingRequest.intent === INTENTS.ORDER_HELP
+          ? INTENTS.ORDER_HELP
+          : INTENTS.AVAILABILITY;
     return match(intent, 0.9, { hint: extractProductSlug(message) || message.trim() });
   }
 
@@ -140,7 +142,10 @@ export function classifyMessage(message, session = {}) {
   if (messageLooksLikeReview(message)) return match(INTENTS.REVIEW, 0.88);
   if (messageLooksLikeProductSearch(message)) return match(INTENTS.PRODUCT_SEARCH, 0.86, { hint: extractProductHint(message) });
   if (/(оплат|сбп|карта|картой|номер карты|перевод|налож|чек|квитанц)/i.test(message)) return match(INTENTS.PAYMENT, 0.86);
-  if (messageLooksLikeHowToOrder(message)) return match(INTENTS.ORDER_HELP, 0.9);
+  if (messageLooksLikeHowToOrder(message)) {
+    const hint = extractProductHint(message);
+    return match(INTENTS.ORDER_HELP, 0.9, hint ? { hint } : {});
+  }
   if (messageLooksLikeDeliveryTerms(message)) return match(INTENTS.DELIVERY_TERMS, 0.88);
   if (messageLooksLikeAvailability(message)) return match(INTENTS.AVAILABILITY, 0.88, { hint: extractProductHint(message) });
   if (messageLooksLikePrice(message)) return match(INTENTS.PRICE_DISCOUNT, 0.86, { hint: extractProductHint(message) });

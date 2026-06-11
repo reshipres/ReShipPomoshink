@@ -76,6 +76,12 @@ describe('system product lookup', () => {
 
     assert.equal(product.lookupStatus, 'multiple');
   });
+
+  it('ignores order-help words when product hint is ambiguous', () => {
+    const product = findProductContext('как заказать beast?', products);
+
+    assert.equal(product.lookupStatus, 'multiple');
+  });
 });
 
 describe('customer-style order lookup conversations', () => {
@@ -359,6 +365,41 @@ describe('customer-style product lookup conversations', () => {
     assert.doesNotMatch(second.answer, /Пришлите ссылку/);
   });
 
+  it('answers order help follow-up for the previously found product', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'тогда беру',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'order_help');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /WLmouse Beast Max Black/);
+    assert.match(second.answer, /https:\/\/reship\.pro\/product\/wlmouse-beast-max-black/);
+    assert.match(second.answer, /3 шт/);
+    assert.doesNotMatch(second.answer, /Пришлите ссылку/);
+  });
+
+  it('answers order help with product context when model is in the same message', () => {
+    const result = handleCustomerMessage({
+      message: 'как заказать beast max?',
+      products,
+    });
+
+    assert.equal(result.intent, 'order_help');
+    assert.equal(result.action, 'answer');
+    assert.equal(result.systemLookup.status, 'found');
+    assert.match(result.answer, /WLmouse Beast Max Black/);
+    assert.match(result.answer, /https:\/\/reship\.pro\/product\/wlmouse-beast-max-black/);
+    assert.doesNotMatch(result.answer, /Пришлите ссылку/);
+  });
+
   it('answers price when customer sends a known model', () => {
     const result = handleCustomerMessage({
       message: 'сколько beast max стоит?',
@@ -427,5 +468,25 @@ describe('customer-style product lookup conversations', () => {
     assert.match(second.answer, /LAMZU Atlantis Mini Pro/);
     assert.match(second.answer, /12\s?990/);
     assert.doesNotMatch(second.answer, /Пришлите ссылку/);
+  });
+
+  it('hands off order help follow-up when the found product is inactive', () => {
+    const first = handleCustomerMessage({
+      message: 'я не могу найти lamzu atlantis mini на сайте',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'хочу заказать',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'order_help');
+    assert.equal(second.action, 'handoff_to_operator');
+    assert.equal(second.handoffReason, 'product_order_review');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /LAMZU Atlantis Mini Pro/);
+    assert.match(second.answer, /не активен в каталоге/);
   });
 });

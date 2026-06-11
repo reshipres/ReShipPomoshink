@@ -5,6 +5,7 @@ import {
   ask,
   composeOrderStatusAnswer,
   composeProductAvailabilityAnswer,
+  composeProductOrderHelpAnswer,
   composeProductPriceAnswer,
   handoff,
 } from './replies.js';
@@ -275,6 +276,24 @@ function routeDecision(classified, message, context) {
       ], classified.confidence);
 
     case INTENTS.ORDER_HELP:
+      if (productContext) {
+        const lookupDecision = composeProductLookupDecision(productContext, 'order_help', classified.confidence);
+        if (lookupDecision) return lookupDecision;
+
+        if (productNeedsManualOrderHelp(productContext)) {
+          return composeProductOrderHandoff(productContext, message, classified.confidence);
+        }
+
+        return answer('order_help', composeProductOrderHelpAnswer(productContext), ['Как оплатить?', 'Сколько доставка?', 'Позови оператора'], classified.confidence);
+      }
+
+      if (classified.hint) {
+        return ask('order_help', 'Проверю этот товар по базе и подскажу, как оформить его без лишних шагов.', [
+          'Как оплатить?',
+          'Позови оператора',
+        ], classified.confidence, { type: 'product', strategy: 'by_hint', hint: classified.hint });
+      }
+
       return answer('order_help', 'Чтобы оформить заказ: откройте карточку товара, добавьте позицию в корзину, укажите контакты, выберите доставку или самовывоз и оплатите заказ на сайте.', ['Как оплатить?', 'Сколько доставка?', 'Позови оператора'], classified.confidence);
 
     case INTENTS.GENERAL_HELP:
@@ -373,6 +392,29 @@ function composeProductLookupDecision(productContext, intent, confidence) {
   }
 
   return null;
+}
+
+function productNeedsManualOrderHelp(product) {
+  const quantity = product.quantity ?? 0;
+  const isPreorder = /подзаказ|предзаказ/i.test(product.sklad || '') || (product.preorderPrice ?? 0) > 0;
+
+  return product.isActive === false || (quantity <= 0 && !isPreorder);
+}
+
+function composeProductOrderHandoff(product, message, confidence) {
+  const name = product.name || 'товар';
+  const reason = product.isActive === false
+    ? 'товар сейчас не активен в каталоге'
+    : 'сейчас не вижу свободного остатка';
+
+  return handoff(
+    'order_help',
+    `По товару ${name}: ${reason}. Передаю оператору, чтобы проверили, можно ли оформить заказ или предложили ближайший вариант.`,
+    'product_order_review',
+    'Оформление товара требует проверки',
+    `Клиент хочет оформить ${name}, но ${reason}. Сообщение клиента: "${message}".`,
+    confidence,
+  );
 }
 
 function messageAsksForDeliveryReview(message) {
