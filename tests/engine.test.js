@@ -52,4 +52,37 @@ describe('order answer quality', () => {
     assert.equal(result.intent, 'greeting');
     assert.doesNotMatch(result.answer, /6_L/);
   });
+
+  it('keeps pending order lookup request for the next customer message', () => {
+    const first = handleMessage({ message: 'где мой заказ' });
+
+    assert.equal(first.intent, 'order_status');
+    assert.equal(first.action, 'ask_clarifying_question');
+    assert.equal(first.nextSession.pendingRequest.type, 'order');
+
+    const second = handleMessage({
+      message: '+7 999 123 45 67',
+      session: first.nextSession,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'ask_clarifying_question');
+    assert.equal(second.contextRequest.type, 'order');
+    assert.equal(second.contextRequest.strategy, 'by_hint');
+  });
+
+  it('clears pending request after answering with order context', () => {
+    const result = handleMessage({
+      message: '+7 999 123 45 67',
+      session: { pendingRequest: { type: 'order', intent: 'order_status' } },
+      orderContext: {
+        orderNumber: '6_L',
+        status: 'PROCESSING',
+      },
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'answer');
+    assert.equal(result.nextSession.pendingRequest, undefined);
+  });
 });

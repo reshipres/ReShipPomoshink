@@ -4,3 +4,8 @@ node_modules/
 coverage/
 dist/
 *.log
+*.zip
+*.raw.json
+data/
+exports/
+imports/

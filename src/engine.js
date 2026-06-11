@@ -11,6 +11,11 @@ import {
 export function handleMessage({ message, session = {}, orderContext = null, productContext = null } = {}) {
   const text = String(message || '').trim();
   if (!text) {
+    const nextSession = {
+      ...session,
+      pendingRequest: { type: 'general', strategy: 'ask_for_question' },
+    };
+
     return {
       action: 'ask_clarifying_question',
       intent: 'other',
@@ -19,21 +24,31 @@ export function handleMessage({ message, session = {}, orderContext = null, prod
       needsHandoff: false,
       handoffReason: 'none',
       suggestedReplies: ['Где мой заказ?', 'Есть товар в наличии?', 'Позови оператора'],
-      nextSession: session,
+      nextSession,
     };
   }
 
   const classified = classifyMessage(text, session);
   const decision = routeDecision(classified, text, { session, orderContext, productContext });
+  const nextSession = {
+    ...session,
+    lastIntent: decision.intent,
+    lastAction: decision.action,
+    lastAnswer: decision.answer,
+  };
+
+  if (decision.contextRequest) {
+    nextSession.pendingRequest = {
+      ...decision.contextRequest,
+      intent: decision.intent,
+    };
+  } else {
+    delete nextSession.pendingRequest;
+  }
 
   return {
     ...decision,
-    nextSession: {
-      ...session,
-      lastIntent: decision.intent,
-      lastAction: decision.action,
-      lastAnswer: decision.answer,
-    },
+    nextSession,
   };
 }
 
@@ -93,8 +108,17 @@ function routeDecision(classified, message, context) {
     case INTENTS.ORDER_CHANGE:
       return handoff('order_change', 'Это лучше сделает оператор: передаю запрос на изменение заказа.', 'order_change', 'Изменение заказа', `Клиент хочет изменить заказ: "${message}".`);
 
+    case INTENTS.DELIVERY_DATA:
+      return handoff('delivery_data', 'Похоже, вы прислали данные доставки. Передаю оператору, чтобы привязали их к заказу и проверили ПВЗ, адрес и контакты.', 'delivery_data', 'Данные доставки', `Клиент прислал данные доставки: "${message}".`);
+
     case INTENTS.BILLING_ISSUE:
       return handoff('payment', 'По оплате нужен оператор. Передаю вопрос, чтобы проверили платеж и статус заказа.', 'billing_issue', 'Проблема с оплатой', `Клиент сообщает о проблеме оплаты: "${message}".`);
+
+    case INTENTS.SITE_ISSUE:
+      return handoff('site_issue', 'Похоже, проблема с сайтом или оформлением заказа. Передаю оператору, чтобы проверили вручную и помогли оформить.', 'site_issue', 'Проблема сайта или оформления', `Клиент сообщает о проблеме сайта/оформления: "${message}".`);
+
+    case INTENTS.CUSTOM_ORDER_REQUEST:
+      return handoff('custom_order_request', 'Для товара по внешней ссылке нужен ручной расчет. Передаю оператору. Если есть размер, цвет или количество, допишите одним сообщением.', 'custom_order_request', 'Расчет товара по ссылке', `Клиент просит рассчитать/заказать товар по внешней ссылке: "${message}".`);
 
     case INTENTS.DEFECT_OR_DAMAGE:
       return handoff('warranty_or_return', 'Похоже на дефект или повреждение. Передаю оператору, здесь важно разобрать случай вручную.', 'defect_or_damage', 'Брак или повреждение', `Клиент сообщает о дефекте/повреждении: "${message}".`);
@@ -116,19 +140,23 @@ function routeDecision(classified, message, context) {
       if (productContext) {
         return answer('availability', composeProductAvailabilityAnswer(productContext), ['Сколько стоит?', 'Как оформить?', 'Позови оператора'], classified.confidence);
       }
-      return ask('availability', 'Проверю наличие. Пришлите ссылку на товар, артикул или точное название модели.', [
+      return ask('availability', classified.hint
+        ? 'Проверю наличие по этому товару. Если он есть в каталоге, подтяну остаток; если нет, передам оператору.'
+        : 'Проверю наличие. Пришлите ссылку на товар, артикул или точное название модели.', [
         'Проверить заказ',
         'Позови оператора',
-      ], classified.confidence, { type: 'product', strategy: 'ask_for_hint' });
+      ], classified.confidence, { type: 'product', strategy: classified.hint ? 'by_hint' : 'ask_for_hint', hint: classified.hint || null });
 
     case INTENTS.PRICE_DISCOUNT:
       if (productContext) {
         return answer('price_discount', composeProductPriceAnswer(productContext), ['Есть в наличии?', 'Как оформить?', 'Позови оператора'], classified.confidence);
       }
-      return ask('price_discount', 'Актуальная цена отображается в карточке товара и корзине. Пришлите ссылку или точное название, проверю по базе.', [
+      return ask('price_discount', classified.hint
+        ? 'Проверю цену по этому товару в базе. Итог с доставкой все равно считается в корзине.'
+        : 'Актуальная цена отображается в карточке товара и корзине. Пришлите ссылку или точное название, проверю по базе.', [
         'Проверить наличие',
         'Позови оператора',
-      ], classified.confidence, { type: 'product', strategy: 'ask_for_hint' });
+      ], classified.confidence, { type: 'product', strategy: classified.hint ? 'by_hint' : 'ask_for_hint', hint: classified.hint || null });
 
     case INTENTS.PRODUCT_ADVICE:
       return ask('product_advice', 'Помогу с подбором. Напишите модель устройства, хват/размер руки или текущий коврик/мышь. По совместимости запчастей лучше передам оператору.', [
@@ -138,6 +166,13 @@ function routeDecision(classified, message, context) {
 
     case INTENTS.ORDER_HELP:
       return answer('order_help', 'Чтобы оформить заказ: откройте карточку товара, добавьте позицию в корзину, укажите контакты, выберите доставку или самовывоз и оплатите заказ на сайте.', ['Как оплатить?', 'Сколько доставка?', 'Позови оператора'], classified.confidence);
+
+    case INTENTS.GENERAL_HELP:
+      return ask('general_help', 'Да, помогу. Напишите вопрос одним сообщением: это про заказ, товар, оплату, доставку или возврат?', [
+        'Где мой заказ?',
+        'Есть товар в наличии?',
+        'Позови оператора',
+      ], classified.confidence, { type: 'general', strategy: 'ask_for_question' });
 
     case INTENTS.PAYMENT:
       return answer('payment', 'Оплата доступна картой МИР или через СБП на сайте. Наложенный платеж сейчас недоступен. Если деньги списались, а заказ не обновился, передам оператору.', ['Где мой заказ?', 'Позови оператора'], classified.confidence);

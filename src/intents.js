@@ -1,4 +1,15 @@
-import { extractOrderHint, looksLikeLookupFragment, normalizeText } from './normalize.js';
+import {
+  extractOrderHint,
+  extractProductSlug,
+  hasExternalUrl,
+  hasPhoneNumber,
+  hasUrl,
+  looksLikeDeliveryDataPayload,
+  looksLikeLookupFragment,
+  looksLikeProductReference,
+  looksLikeStandaloneOrderLookup,
+  normalizeText,
+} from './normalize.js';
 
 export const INTENTS = {
   GREETING: 'greeting',
@@ -9,7 +20,10 @@ export const INTENTS = {
   ORDER_LOOKUP_FOLLOWUP: 'order_lookup_followup',
   ORDER_SWITCH: 'order_switch',
   ORDER_CHANGE: 'order_change',
+  DELIVERY_DATA: 'delivery_data',
   BILLING_ISSUE: 'billing_issue',
+  SITE_ISSUE: 'site_issue',
+  CUSTOM_ORDER_REQUEST: 'custom_order_request',
   DEFECT_OR_DAMAGE: 'defect_or_damage',
   REFUND_OR_RETURN: 'refund_or_return',
   ANGRY_CUSTOMER: 'angry_customer',
@@ -24,16 +38,22 @@ export const INTENTS = {
   LOYALTY: 'loyalty',
   ACCOUNT: 'account',
   ORDER_HELP: 'order_help',
+  GENERAL_HELP: 'general_help',
   OTHER: 'other',
 };
 
 export function classifyMessage(message, session = {}) {
   const text = normalizeText(message);
   const lastIntent = session.lastIntent || null;
+  const pendingRequest = session.pendingRequest || null;
 
   const actionable = hasActionableRequest(message);
 
-  if (!actionable && /^(привет|здравствуй(?:те)?|добрый день|добрый вечер|доброе утро|hello|hi|hey)(?=$|\s)/u.test(text)) {
+  if (!actionable && messageLooksLikeGeneralHelp(message)) {
+    return match(INTENTS.GENERAL_HELP, 0.82);
+  }
+
+  if (!actionable && /^(привет|приветствую|здравствуй(?:те)?|добрый день|добрый вечер|доброе утро|доброй ночи|hello|hi|hey)(?=$|\s)/u.test(text)) {
     return match(INTENTS.GREETING, 0.98);
   }
 
@@ -45,12 +65,20 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.ACKNOWLEDGEMENT, 0.96);
   }
 
-  if (/(оператор|менеджер|жив(ой|ого)|человек|поддержк|позови|свяжите)/i.test(message)) {
+  if (/(оператор|менеджер|жив(ой|ого)|человек|поддержк|позови|свяжите|жду.*ответ|жду.*информац|ожидаю.*ответ|нет.*ответа|вашего ответа|не отвечают|не ответили|ответьте|когда ответите|обратн.*связ)/i.test(message)) {
     return match(INTENTS.HUMAN_REQUESTED, 0.99);
   }
 
-  if (/(изменить|поменять|сменить|исправить|заменить|перенести).*(адрес|телефон|номер|получател|заказ|пвз|пункт выдачи|доставк)|отменить заказ|отмена заказа|объединить заказ|добавить.*к заказ/i.test(message)) {
+  if (looksLikeDeliveryDataPayload(message)) {
+    return match(INTENTS.DELIVERY_DATA, 0.96);
+  }
+
+  if (/(изменить|поменять|сменить|исправить|заменить|перенести).*(адрес|телефон|номер|получател|заказ|пвз|пункт выдачи|доставк|цвет|товар|модель|позици)|отменить заказ|отмена заказа|объединить заказ|добавить.*к заказ|давайте заменим/i.test(message)) {
     return match(INTENTS.ORDER_CHANGE, 0.98);
+  }
+
+  if (messageLooksLikeSiteIssue(message)) {
+    return match(INTENTS.SITE_ISSUE, 0.96);
   }
 
   if (/(не проходит оплат|не могу оплат|не получается оплат|ошибка оплат|оплатил.*статус|статус.*не измен|деньги списал|списали.*деньги|двойн(ая|ое).*оплат|плат[её]ж.*не вижу|чек.*не приш)/i.test(message)) {
@@ -69,6 +97,15 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.ANGRY_CUSTOMER, 0.94);
   }
 
+  if (pendingRequest?.type === 'order' && looksLikeLookupFragment(message)) {
+    return match(INTENTS.ORDER_LOOKUP_FOLLOWUP, 0.92, { hint: extractOrderHint(message) || message.trim() });
+  }
+
+  if (pendingRequest?.type === 'product' && looksLikeProductReference(message)) {
+    const intent = pendingRequest.intent === INTENTS.PRICE_DISCOUNT ? INTENTS.PRICE_DISCOUNT : INTENTS.AVAILABILITY;
+    return match(intent, 0.9, { hint: extractProductSlug(message) || message.trim() });
+  }
+
   if (['order_status', 'delivery_terms'].includes(lastIntent) && /^(другой|другая|другое|другие|еще|ещё|не этот|не эта|не то|другой заказ|другую посылку)(?=$|\s)/i.test(message.trim())) {
     return match(INTENTS.ORDER_SWITCH, 0.95);
   }
@@ -77,12 +114,19 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.ORDER_LOOKUP_FOLLOWUP, 0.9, { hint: extractOrderHint(message) || message.trim() });
   }
 
-  if (/(оплат|сбп|карта|картой|налож|чек|квитанц)/i.test(message)) return match(INTENTS.PAYMENT, 0.86);
+  if (!actionable && messageLooksLikeAcknowledgement(message)) {
+    return match(INTENTS.ACKNOWLEDGEMENT, 0.96);
+  }
+
+  if (messageLooksLikeCustomOrderRequest(message)) return match(INTENTS.CUSTOM_ORDER_REQUEST, 0.9);
+  if (looksLikeStandaloneOrderLookup(message)) return match(INTENTS.ORDER_STATUS, 0.88, { hint: extractOrderHint(message) || message.trim() });
+  if (/(оплат|сбп|карта|картой|номер карты|перевод|налож|чек|квитанц)/i.test(message)) return match(INTENTS.PAYMENT, 0.86);
   if (messageLooksLikeHowToOrder(message)) return match(INTENTS.ORDER_HELP, 0.9);
   if (messageLooksLikeDeliveryTerms(message)) return match(INTENTS.DELIVERY_TERMS, 0.88);
-  if (messageLooksLikeAvailability(message)) return match(INTENTS.AVAILABILITY, 0.88);
-  if (messageLooksLikePrice(message)) return match(INTENTS.PRICE_DISCOUNT, 0.86);
+  if (messageLooksLikeAvailability(message)) return match(INTENTS.AVAILABILITY, 0.88, { hint: extractProductHint(message) });
+  if (messageLooksLikePrice(message)) return match(INTENTS.PRICE_DISCOUNT, 0.86, { hint: extractProductHint(message) });
   if (messageLooksLikeProductAdvice(message)) return match(INTENTS.PRODUCT_ADVICE, 0.76);
+  if (looksLikeShortProductReference(message)) return match(INTENTS.AVAILABILITY, 0.72, { hint: extractProductHint(message) });
   if (messageLooksLikeOrder(message)) return match(INTENTS.ORDER_STATUS, 0.9, { hint: extractOrderHint(message) });
 
   if (/(самовывоз|забрать|адрес|таганск|москва)/i.test(message)) return match(INTENTS.PICKUP, 0.86);
@@ -100,39 +144,80 @@ function match(intent, confidence, extras = {}) {
 
 export function hasActionableRequest(message) {
   return messageLooksLikeOrder(message)
+    || looksLikeStandaloneOrderLookup(message)
+    || looksLikeDeliveryDataPayload(message)
     || messageLooksLikeAvailability(message)
     || messageLooksLikePrice(message)
     || messageLooksLikeProductAdvice(message)
     || messageLooksLikeHowToOrder(message)
     || messageLooksLikeDeliveryTerms(message)
+    || messageLooksLikeSiteIssue(message)
+    || messageLooksLikeCustomOrderRequest(message)
     || /(оплат|самовывоз|забрать|адрес|моддинг|гарант|вернуть|возврат|обмен|оператор|менеджер|помощ)/i.test(message);
 }
 
 export function messageLooksLikeOrder(message) {
   if (messageLooksLikeAvailability(message) || messageLooksLikePrice(message) || messageLooksLikeProductAdvice(message)) return false;
-  return /(заказ|статус|трек|трек-?номер|сдэк|cdek|достав|где.*посыл|едет|отправ|когда.*приед|когда.*получ)/i.test(message);
+  return Boolean(extractOrderHint(message))
+    || hasPhoneNumber(message)
+    || /(заказ|статус|трек|трек-?номер|сдэк|cdek|достав|где.*посыл|едет|отправ|когда.*приед|когда.*получ|когда.*отправ)/i.test(message);
 }
 
 function messageLooksLikeAvailability(message) {
-  return /(в наличии|есть ли|есть\?|когда будет|появится|поступлен|предзаказ|под заказ|ресток|restock|доступен|можно заказать)/i.test(message);
+  return /(в наличии|в нале|на складе|есть ли|есть\?|есть\s+(черн|бел|красн|син|розов|сер|фиолет|желт|зел|оранж)|какие\s+(цвета|расцветки)|какой\s+цвет|осталось|остаток|когда будет|появится|поступлен|поставка|завоз|дроп|предзаказ|под заказ|ресток|restock|доступен|можно заказать|будете завозить|привезете|привезёте)/i.test(message);
 }
 
 function messageLooksLikeHowToOrder(message) {
-  return /(как.*(оформ|заказат|купить)|как купить|как оформить заказ|хочу заказать|можно оформить|как происходит заказ)/i.test(message);
+  return /(как.*(оформ|заказат|купить)|как купить|как оформить заказ|хочу заказать|хочу купить|можно оформить|можно купить|как происходит заказ|давайте оформим|давайте закажем|тогда возьму|тогда беру|беру)/i.test(message);
 }
 
 function messageLooksLikeDeliveryTerms(message) {
   if (extractOrderHint(message)) return false;
-  return /(сколько.*(достав|ид[её]т|ехать)|срок.*достав|доставка.*сколько|стоим.*достав|цена.*достав|тариф.*сдэк|доставк[аи].*(москв|росси|регион|город|курьер|пвз))/i.test(message)
-    && !/(мой|моего|моем|заказ|трек|статус)/i.test(message);
+  return /(сколько.*(достав|ид[её]т|ехать|ждать|времени|дней)|через сколько|в течени[еи] какого|как долго|долго.*ждать|срок.*(достав|отправ|предзаказ|ожидан)|сроки|будет идти|доставка.*сколько|стоим.*достав|цена.*достав|тариф.*сдэк|доставк[аи].*(москв|росси|регион|город|курьер|пвз))/i.test(message)
+    && !/(мой|моего|моем|(^|\s)заказ($|\s)|трек|статус)/i.test(message);
 }
 
 function messageLooksLikePrice(message) {
-  return /(цена|стоим|сколько стоит|сколько будет|скидк|промокод|актуальная цена|предварительная цена)/i.test(message);
+  return /(цена|стоим|стоить|стоят|сколько стоит|сколько стоят|сколько будет|будет стоить|скидк|промокод|актуальная цена|предварительная цена)/i.test(message);
 }
 
 function messageLooksLikeProductAdvice(message) {
   return /(посовету|подскаж.*какой|что лучше|подойдет|совместим|размер|soft|xsoft|mid|свитч|switch|глайды|ковр|мышк|клавиатур)/i.test(message)
     && !messageLooksLikeAvailability(message)
     && !messageLooksLikePrice(message);
+}
+
+function messageLooksLikeAcknowledgement(message) {
+  const text = normalizeText(message);
+  if (!text || /(не понял|не поняла|не понимаю|не понятно|непонятно)/i.test(message)) return false;
+
+  return /^(да|нет|ага|угу|ок+|оке+й+|окей|хорошо|ладно|понял[а]?|понятно|ясно|принял[а]?|верно|спасибо|спс|благодарю|супер|отлично|договорились|ничего страшного|без проблем|извините|прошу прощения|подумаю|напишу|хорошего дня|хорошего вечера|большое спасибо|спасибо большое|спасибо за [a-zа-я0-9\\s-]{3,80}|спасибо большое за [a-zа-я0-9\\s-]{3,80}|большое спасибо за [a-zа-я0-9\\s-]{3,80}|благодарю за [a-zа-я0-9\\s-]{3,80})(\s+(вам|тебе|большое|спасибо|понял[а]?|окей|хорошо|супер|отлично|дня|вечера))*$/i.test(text);
+}
+
+function messageLooksLikeGeneralHelp(message) {
+  return /((можете|сможете|можно).{0,30}(подсказать|сказать|уточнить)|хотел(ось)?\s+(узнать|спросить|уточнить)|есть вопрос|вопрос по)/i.test(message);
+}
+
+function messageLooksLikeSiteIssue(message) {
+  return /(сайт|корзин|оформлен|оформить|оформля|личн(ый|ом).*кабинет|промокод|кнопк).*(не работает|ошибк|не могу|не получается|не дает|не даёт|не открывается|не отображ|не видно|трабл|проблем)|не могу.*(оформить|заказать|положить.*корзин)|ошибка.*(сайт|корзин|оформ|оплат)/i.test(message);
+}
+
+function messageLooksLikeCustomOrderRequest(message) {
+  if (hasExternalUrl(message) && /(заказ|заказать|купить|выкуп|можно|сколько|цена|размер|цвет)/i.test(message)) return true;
+  if (hasUrl(message) && !/reship\.pro/i.test(message) && !/(достав|трек|заказ|статус)/i.test(message)) return true;
+
+  return /(выкуп|байер|байеры|poizon|пойзон|taobao|1688|得物|dewu|китай|китая|заказать\s+с|привезти\s+с|товар\s+по\s+ссылк)/i.test(message);
+}
+
+function looksLikeShortProductReference(message) {
+  const text = normalizeText(message);
+  if (!looksLikeProductReference(message)) return false;
+  if (hasUrl(message)) return false;
+
+  const words = text.split(/\s+/).filter(Boolean);
+  return words.length >= 1 && words.length <= 7;
+}
+
+function extractProductHint(message) {
+  return extractProductSlug(message) || (looksLikeProductReference(message) ? String(message).trim() : null);
 }
