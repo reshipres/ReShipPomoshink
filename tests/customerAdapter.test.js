@@ -45,6 +45,12 @@ describe('system order lookup', () => {
     assert.equal(order.lookupStatus, 'multiple');
   });
 
+  it('finds an order by full recipient name without matching the first name inside a surname', () => {
+    assert.equal(findOrderContext('Иванов Иван', orders).crmOrderNumber, '6_L');
+    assert.equal(findOrderContext('Иванов Илья', orders).crmOrderNumber, '7_M');
+    assert.equal(findOrderContext('Петров Анна', orders).crmOrderNumber, '8_N');
+  });
+
   it('finds latest known customer order by customer id', () => {
     const order = findLatestOrderContext({ id: 'customer-ivanov' }, orders);
 
@@ -169,7 +175,8 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(second.intent, 'order_status');
     assert.equal(second.action, 'answer');
     assert.equal(second.systemLookup.status, 'found');
-    assert.match(second.answer, /Нашел заказ #6_L/);
+    assert.match(second.answer, /По заказу #6_L/);
+    assert.match(second.answer, /2-4 рабочих дня/);
     assert.doesNotMatch(second.answer, /Пришлите номер заказа/);
     assert.doesNotMatch(second.answer, /Не нашел заказ/);
   });
@@ -361,7 +368,9 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(second.intent, 'order_status');
     assert.equal(second.action, 'answer');
     assert.equal(second.systemLookup.status, 'found');
-    assert.match(second.answer, /Нашел заказ #7_M/);
+    assert.match(second.answer, /По заказу #7_M/);
+    assert.match(second.answer, /1-2 рабочих дня/);
+    assert.match(second.answer, /9876543210/);
     assert.doesNotMatch(second.answer, /Не нашел заказ/);
   });
 
@@ -466,6 +475,25 @@ describe('customer-style order lookup conversations', () => {
     assert.match(second.answer, /Нашел заказ #8_N/);
   });
 
+  it('answers order status by full Ivanov name instead of returning multiple matches', () => {
+    const first = handleCustomerMessage({
+      message: 'где мой заказ',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'Иванов Иван',
+      session: first.nextSession,
+      orders,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /Нашел заказ #6_L/);
+    assert.doesNotMatch(second.answer, /несколько похожих заказов/);
+  });
+
   it('answers order status by phone after asking for an identifier', () => {
     const first = handleCustomerMessage({
       message: 'где мой заказ',
@@ -483,6 +511,29 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(second.systemLookup.status, 'found');
     assert.match(second.answer, /Нашел заказ #6_L/);
     assert.doesNotMatch(second.answer, /Пришлите номер заказа/);
+  });
+
+  it('answers short timing and shipping follow-ups from the previously found order', () => {
+    const first = handleCustomerMessage({
+      message: '1234567890',
+      orders,
+    });
+
+    for (const message of ['по срокам что?', 'уже отправили?', 'сколько ждать?']) {
+      const result = handleCustomerMessage({
+        message,
+        session: first.nextSession,
+        orders,
+      });
+
+      assert.equal(result.intent, 'order_status');
+      assert.equal(result.action, 'answer');
+      assert.equal(result.systemLookup.status, 'found');
+      assert.match(result.answer, /#6_L/);
+      assert.match(result.answer, /2-4 рабочих дня/);
+      assert.doesNotMatch(result.answer, /Не нашел заказ/);
+      assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
+    }
   });
 });
 

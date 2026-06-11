@@ -255,5 +255,5 @@ function firstProductWord(value) {
 function messageLooksLikeOrderFollowup(message) {
   if (extractOrderHint(message)) return false;
 
-  return /(когда|приед|прид[её]т|доставк|где|забрать|получ|выдач|сдэк|cdek|трек|статус|едет|ид[её]т|самовывоз|адрес|пункт|пвз)/i.test(message);
+  return /(когда|примерно|сколько\s+ждать|срок|долго|приед|прид[её]т|доставк|где|забрать|получ|выдач|сдэк|cdek|трек|статус|отправ|готов|едет|ид[её]т|самовывоз|адрес|пункт|пвз)/i.test(message);
 }

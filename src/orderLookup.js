@@ -97,11 +97,20 @@ function findNameMatches(query, orders) {
   return orders.filter((order) => {
     const fullName = normalizeText(order.recipientFullName || '');
     const lastName = normalizeText(order.recipientLastName || '');
+    const nameTokens = [...new Set([
+      ...fullName.split(/\s+/),
+      ...lastName.split(/\s+/),
+    ].filter(Boolean))];
 
-    if (!fullName && !lastName) return false;
+    if (!nameTokens.length) return false;
 
-    return words.every((word) => fullName.includes(word) || lastName.includes(word));
+    return words.every((word) => nameTokens.some((token) => nameTokenMatches(word, token)));
   });
+}
+
+function nameTokenMatches(queryWord, nameToken) {
+  if (queryWord === nameToken) return true;
+  return queryWord.length >= 5 && nameToken.startsWith(queryWord);
 }
 
 function normalizeIdentifier(value) {

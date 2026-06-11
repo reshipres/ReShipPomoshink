@@ -82,7 +82,7 @@ export function classifyMessage(message, session = {}) {
   }
 
   const orderDetail = extractOrderDetailRequest(message);
-  if (orderDetail) {
+  if (orderDetail && (orderDetail !== 'delivery_timing' || messageCanUseOrderDetailContext(message, session))) {
     return match(INTENTS.ORDER_STATUS, 0.9, { detail: orderDetail });
   }
 
@@ -231,6 +231,36 @@ function classifyGeneralTopicReply(text) {
   return null;
 }
 
+function messageCanUseOrderDetailContext(message, session) {
+  return session?.lastIntent === INTENTS.ORDER_STATUS
+    || session?.pendingRequest?.type === 'order'
+    || Boolean(extractOrderHint(message))
+    || messageMentionsOrderContext(message);
+}
+
+function messageMentionsOrderContext(message) {
+  const words = normalizeText(message).split(/\s+/).filter(Boolean);
+  const exactWords = new Set([
+    'заказ',
+    'заказа',
+    'заказу',
+    'заказом',
+    'трек',
+    'трек-номер',
+    'сдэк',
+    'cdek',
+    'посылка',
+    'посылку',
+    'посылки',
+    'мой',
+    'моего',
+    'моем',
+    'моему',
+  ]);
+
+  return words.some((word) => exactWords.has(word) || /^накладн/.test(word));
+}
+
 export function hasActionableRequest(message) {
   return messageLooksLikeOrder(message)
     || looksLikeStandaloneOrderLookup(message)
@@ -345,6 +375,10 @@ function extractOrderDetailRequest(message) {
 
   if (/(трек|трек-?номер|номер\s+(накладн|отправлен)|накладн)/i.test(message)) {
     return 'tracking';
+  }
+
+  if (/(когда|примерно|сколько\s+ждать|по\s+срок|срок|долго|приед|прид[её]т|доставят|отправил|отправят|отправлен|готов|можно\s+забрать)/i.test(message)) {
+    return 'delivery_timing';
   }
 
   if (/(куда\s+(едет|ид[её]т|отправ)|какой\s+(адрес|пвз|пункт)|адрес\s+(доставк|получен|указан)|пвз|пункт\s+выдачи|куда\s+достав)/i.test(message)) {

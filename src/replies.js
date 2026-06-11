@@ -99,6 +99,10 @@ export function composeOrderDetailAnswer(order, detail) {
     return `По заказу #${orderLabel} отдельный трек не нужен для выбранного способа получения.`;
   }
 
+  if (detail === 'delivery_timing') {
+    return composeOrderTimingAnswer(order, orderLabel);
+  }
+
   if (detail === 'delivery_destination') {
     return composeOrderDestinationAnswer(order, orderLabel);
   }
@@ -122,6 +126,37 @@ export function composeOrderDetailAnswer(order, detail) {
   }
 
   return composeOrderStatusAnswer(order);
+}
+
+function composeOrderTimingAnswer(order, orderLabel) {
+  const rawStatus = normalizeStatus(order.crmStatusSlug || order.crmStatusGroup || order.status);
+  const statusText = ORDER_STATUS_TEXT[rawStatus] || rawStatus.replace(/[_-]/g, ' ') || 'статус пока не определен';
+  const methodKey = String(order.deliveryMethod || '').toUpperCase();
+  const lines = [`По заказу #${orderLabel} сейчас: ${statusText}.`];
+
+  if (methodKey === 'PICKUP' || methodKey === 'SELF_PICKUP') {
+    lines.push(`Самовывоз: ${SUPPORT_CONTACTS.pickupAddress}. Получать можно после подтверждения готовности заказа.`);
+  } else if (order.deliveryTime) {
+    lines.push(`Расчетный срок при оформлении: ${order.deliveryTime}.`);
+  }
+
+  if (order.cdekTrackingNumber) {
+    lines.push(`Трек CDEK: ${order.cdekTrackingNumber}.`);
+  }
+
+  if (order.cdekOrderStatus) {
+    lines.push(`Статус CDEK: ${CDEK_STATUS_TEXT[order.cdekOrderStatus] || order.cdekOrderStatus}.`);
+  }
+
+  if (order.updatedAt) {
+    lines.push(`Последнее обновление: ${formatDate(order.updatedAt)}.`);
+  }
+
+  if (['processing', 'assembling', 'assembly', 'packaging', 'packing'].includes(rawStatus)) {
+    lines.push('Если срок уже прошел или статус долго не меняется, передам оператору на ручную проверку.');
+  }
+
+  return lines.join(' ');
 }
 
 function composeOrderPaymentStatusAnswer(order, orderLabel) {
