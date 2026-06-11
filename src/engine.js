@@ -175,7 +175,7 @@ function routeDecision(classified, message, context) {
         const lookupDecision = composeOrderLookupDecision(orderContext, classified, message);
         if (lookupDecision) return lookupDecision;
 
-        if (classified.detail) {
+        if (classified.detail && !orderContext.selectedFromAmbiguousCandidates) {
           return answer('order_status', composeOrderDetailAnswer(orderContext, classified.detail), [
             'Где мой заказ?',
             'Изменить данные',
@@ -374,7 +374,8 @@ function composeOrderLookupDecision(orderContext, classified, message) {
   }
 
   if (lookupStatus === 'multiple' || lookupStatus === 'ambiguous') {
-    return ask('order_status', 'Нашел несколько похожих заказов. Чтобы не перепутать, пришлите номер заказа или трек CDEK.', [
+    return ask('order_status', 'Нашел несколько похожих заказов. Чтобы не перепутать, пришлите номер заказа, трек CDEK, полное ФИО или уточните: последний, старый, курьер, ПВЗ.', [
+      'Последний заказ',
       'Позови оператора',
       'Проверить другой заказ',
     ], classified.confidence, { type: 'order', strategy: 'ask_for_exact_hint' });

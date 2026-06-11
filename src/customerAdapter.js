@@ -60,12 +60,18 @@ function resolveOrderContext(result, message, customer, orders, session) {
 
   const hint = request.hint || null;
   if (!hint) {
+    const candidateSelection = resolveAmbiguousOrderSelection(message, session, orders);
+    if (candidateSelection) return candidateSelection;
+
     if (request.strategy === 'latest_or_hint' || request.strategy === 'latest') {
       return findLatestOrderContext(customer, orders) || findLastOrderContext(session, orders);
     }
 
     return null;
   }
+
+  const candidateSelection = resolveAmbiguousOrderSelection(hint, session, orders);
+  if (candidateSelection) return candidateSelection;
 
   const directMatch = findOrderContext(hint || message, orders);
   if (directMatch.lookupStatus !== 'not_found') return directMatch;
@@ -161,9 +167,20 @@ function enrichSessionWithProduct(session, productContext) {
 }
 
 function enrichSessionWithOrder(session, orderContext) {
+  const lookupStatus = orderContext?.lookupStatus || orderContext?.resultStatus || null;
+  if (lookupStatus === 'multiple' && Array.isArray(orderContext.candidates) && orderContext.candidates.length) {
+    const nextSession = {
+      ...session,
+      lastOrderCandidates: orderContext.candidates,
+    };
+    delete nextSession.lastOrderLookup;
+
+    return nextSession;
+  }
+
   if (!isFoundOrderContext(orderContext)) return session;
 
-  return {
+  const nextSession = {
     ...session,
     lastOrderLookup: {
       orderNumber: orderContext.orderNumber || null,
@@ -173,16 +190,125 @@ function enrichSessionWithOrder(session, orderContext) {
       cdekTrackingNumber: orderContext.cdekTrackingNumber || null,
     },
   };
+  delete nextSession.lastOrderCandidates;
+
+  return nextSession;
 }
 
 function clearLastOrderOnSwitch(session, contextRequest) {
   if (contextRequest?.type === 'order' && contextRequest.strategy === 'ask_for_hint') {
     const nextSession = { ...session };
     delete nextSession.lastOrderLookup;
+    delete nextSession.lastOrderCandidates;
     return nextSession;
   }
 
   return session;
+}
+
+function resolveAmbiguousOrderSelection(hint, session, orders) {
+  const candidates = candidateOrdersFromSession(session, orders);
+  if (candidates.length < 2) return null;
+
+  const text = String(hint || '').trim();
+  const matched = filterCandidateOrders(text, candidates);
+  if (matched.length === 1) return markAmbiguousCandidateSelection(matched[0]);
+  if (matched.length > 1) return { lookupStatus: 'multiple', candidates: matched.map(orderCandidateReference) };
+
+  if (messageLooksLikeLatestSelection(text)) return markAmbiguousCandidateSelection([...candidates].sort(compareOrderTimeDesc)[0]);
+  if (messageLooksLikeOldestSelection(text)) return markAmbiguousCandidateSelection([...candidates].sort(compareOrderTimeAsc)[0]);
+
+  return null;
+}
+
+function markAmbiguousCandidateSelection(orderContext) {
+  return {
+    ...orderContext,
+    selectedFromAmbiguousCandidates: true,
+  };
+}
+
+function candidateOrdersFromSession(session, orders) {
+  const candidates = Array.isArray(session?.lastOrderCandidates) ? session.lastOrderCandidates : [];
+  const result = [];
+
+  for (const candidate of candidates) {
+    const identifiers = [
+      candidate.crmOrderNumber,
+      candidate.shortId,
+      candidate.orderNumber,
+      candidate.orderId,
+      candidate.cdekTrackingNumber,
+    ].filter(Boolean);
+
+    for (const identifier of identifiers) {
+      const orderContext = findOrderContext(identifier, orders);
+      if (orderContext.lookupStatus !== 'not_found' && orderContext.lookupStatus !== 'multiple') {
+        result.push(orderContext);
+        break;
+      }
+    }
+  }
+
+  return result;
+}
+
+function filterCandidateOrders(message, candidates) {
+  if (/(курьер|до\s+двер|адрес)/i.test(message)) {
+    return candidates.filter((order) => /courier|курьер/i.test(String(order.deliveryMethod || '')));
+  }
+
+  if (/(пвз|пункт)/i.test(message)) {
+    return candidates.filter((order) => /pvz|point|pickup_point/i.test(String(order.deliveryMethod || '')));
+  }
+
+  if (/(сдэк|cdek)/i.test(message)) {
+    return candidates.filter((order) => /cdek/i.test(String(order.deliveryMethod || '')));
+  }
+
+  if (/(самовывоз|забрать|пикап|pickup)/i.test(message)) {
+    return candidates.filter((order) => /pickup|self/i.test(String(order.deliveryMethod || '')));
+  }
+
+  return [];
+}
+
+function messageLooksLikeLatestSelection(message) {
+  return /^(?:а\s+)?(последн(ий|яя|ее|юю)?|нов(ый|ая|ое|ую)|свеж(ий|ая|ее|ую)|сам(ый|ая|ое)\s+нов(ый|ая|ое)|крайн(ий|яя|ее))(?:\s+заказ)?[\s?!.]*$/i.test(message);
+}
+
+function messageLooksLikeOldestSelection(message) {
+  return /^(?:а\s+)?(перв(ый|ая|ое|ую)|стар(ый|ая|ое|ую)|сам(ый|ая|ое)\s+стар(ый|ая|ое))(?:\s+заказ)?[\s?!.]*$/i.test(message);
+}
+
+function compareOrderTimeDesc(left, right) {
+  return orderTime(right) - orderTime(left);
+}
+
+function compareOrderTimeAsc(left, right) {
+  return orderTime(left) - orderTime(right);
+}
+
+function orderTime(order) {
+  const rawDate = order.updatedAt || order.createdAt || order.paidAt || order.orderDate || '';
+  const time = Date.parse(rawDate);
+
+  return Number.isFinite(time) ? time : 0;
+}
+
+function orderCandidateReference(order) {
+  return {
+    orderNumber: order.orderNumber || null,
+    crmOrderNumber: order.crmOrderNumber || null,
+    shortId: order.shortId || null,
+    orderId: order.orderId || null,
+    cdekTrackingNumber: order.cdekTrackingNumber || null,
+    deliveryMethod: order.deliveryMethod || null,
+    status: order.status || order.crmStatusSlug || order.crmStatusGroup || null,
+    cdekOrderStatus: order.cdekOrderStatus || null,
+    updatedAt: order.updatedAt || null,
+    createdAt: order.createdAt || null,
+  };
 }
 
 function findLastOrderContext(session, orders) {

@@ -6,11 +6,11 @@ export function findOrderContext(query, orders = []) {
 
   const exactMatches = findExactIdentifierMatches(value, orders);
   if (exactMatches.length === 1) return exactMatches[0];
-  if (exactMatches.length > 1) return { lookupStatus: 'multiple' };
+  if (exactMatches.length > 1) return multipleOrderContext(exactMatches);
 
   const nameMatches = findNameMatches(value, orders);
   if (nameMatches.length === 1) return nameMatches[0];
-  if (nameMatches.length > 1) return { lookupStatus: 'multiple' };
+  if (nameMatches.length > 1) return multipleOrderContext(nameMatches);
 
   return { lookupStatus: 'not_found' };
 }
@@ -111,6 +111,28 @@ function findNameMatches(query, orders) {
 function nameTokenMatches(queryWord, nameToken) {
   if (queryWord === nameToken) return true;
   return queryWord.length >= 5 && nameToken.startsWith(queryWord);
+}
+
+function multipleOrderContext(matches) {
+  return {
+    lookupStatus: 'multiple',
+    candidates: matches.map(orderReference),
+  };
+}
+
+function orderReference(order) {
+  return {
+    orderNumber: order.orderNumber || null,
+    crmOrderNumber: order.crmOrderNumber || null,
+    shortId: order.shortId || null,
+    orderId: order.orderId || null,
+    cdekTrackingNumber: order.cdekTrackingNumber || null,
+    deliveryMethod: order.deliveryMethod || null,
+    status: order.status || order.crmStatusSlug || order.crmStatusGroup || null,
+    cdekOrderStatus: order.cdekOrderStatus || null,
+    updatedAt: order.updatedAt || null,
+    createdAt: order.createdAt || null,
+  };
 }
 
 function normalizeIdentifier(value) {

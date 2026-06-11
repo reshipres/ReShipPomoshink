@@ -466,6 +466,121 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(second.action, 'ask_clarifying_question');
     assert.equal(second.systemLookup.status, 'multiple');
     assert.match(second.answer, /несколько похожих заказов/);
+    assert.match(second.answer, /последний/);
+  });
+
+  it('uses the latest order candidate when customer clarifies ambiguous surname with "last"', () => {
+    const first = handleCustomerMessage({
+      message: 'где мой заказ',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'Иванов',
+      session: first.nextSession,
+      orders,
+    });
+
+    const third = handleCustomerMessage({
+      message: 'последний',
+      session: second.nextSession,
+      orders,
+    });
+
+    assert.equal(third.intent, 'order_status');
+    assert.equal(third.action, 'answer');
+    assert.equal(third.systemLookup.status, 'found');
+    assert.match(third.answer, /Нашел заказ #7_M/);
+    assert.doesNotMatch(third.answer, /Не нашел заказ/);
+  });
+
+  it('uses the oldest order candidate when customer clarifies ambiguous surname with "first"', () => {
+    const first = handleCustomerMessage({
+      message: 'где мой заказ',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'Иванов',
+      session: first.nextSession,
+      orders,
+    });
+
+    const third = handleCustomerMessage({
+      message: 'первый',
+      session: second.nextSession,
+      orders,
+    });
+
+    assert.equal(third.intent, 'order_status');
+    assert.equal(third.action, 'answer');
+    assert.equal(third.systemLookup.status, 'found');
+    assert.match(third.answer, /Нашел заказ #6_L/);
+    assert.doesNotMatch(third.answer, /Не нашел заказ/);
+  });
+
+  it('uses delivery method when customer clarifies ambiguous surname by courier or pickup point', () => {
+    const first = handleCustomerMessage({
+      message: 'где мой заказ',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'Иванов',
+      session: first.nextSession,
+      orders,
+    });
+
+    const courier = handleCustomerMessage({
+      message: 'тот что с курьером',
+      session: second.nextSession,
+      orders,
+    });
+
+    const pvz = handleCustomerMessage({
+      message: 'пвз',
+      session: second.nextSession,
+      orders,
+    });
+
+    assert.equal(courier.intent, 'order_status');
+    assert.equal(courier.action, 'answer');
+    assert.equal(courier.systemLookup.status, 'found');
+    assert.match(courier.answer, /Нашел заказ #7_M/);
+
+    assert.equal(pvz.intent, 'order_status');
+    assert.equal(pvz.action, 'answer');
+    assert.equal(pvz.systemLookup.status, 'found');
+    assert.match(pvz.answer, /Нашел заказ #6_L/);
+  });
+
+  it('clears previous order when a new lookup matches multiple candidates', () => {
+    const first = handleCustomerMessage({
+      message: '9876543210',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'Иванов',
+      session: first.nextSession,
+      orders,
+    });
+
+    const third = handleCustomerMessage({
+      message: 'когда приедет',
+      session: second.nextSession,
+      orders,
+    });
+
+    assert.equal(first.systemLookup.status, 'found');
+    assert.equal(first.nextSession.lastOrderLookup.crmOrderNumber, '7_M');
+
+    assert.equal(second.systemLookup.status, 'multiple');
+    assert.equal(second.nextSession.lastOrderLookup, undefined);
+    assert.equal(second.nextSession.lastOrderCandidates.length, 2);
+
+    assert.equal(third.action, 'ask_clarifying_question');
+    assert.doesNotMatch(third.answer, /#7_M/);
   });
 
   it('answers order status by full name when it is unique', () => {

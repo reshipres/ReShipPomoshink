@@ -89,7 +89,7 @@
           "intent": "order_status",
           "action": "ask_clarifying_question",
           "contextRequestStrategy": "ask_for_exact_hint",
-          "answerIncludes": ["несколько похожих заказов", "номер заказа или трек CDEK"]
+          "answerIncludes": ["несколько похожих заказов", "номер заказа", "трек CDEK", "последний"]
         }
       }
     ]
