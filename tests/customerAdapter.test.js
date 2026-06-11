@@ -522,6 +522,66 @@ describe('customer-style product lookup conversations', () => {
     assert.doesNotMatch(second.answer, /Пришлите ссылку/);
   });
 
+  it('answers discount follow-up for the previously found product', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а скидка есть?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'price_discount');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /WLmouse Beast Max Black/);
+    assert.match(second.answer, /15\s?990/);
+    assert.match(second.answer, /Отдельный промокод или ручную скидку/);
+    assert.doesNotMatch(second.answer, /В наличии 3 шт/);
+  });
+
+  it('answers promo code follow-up without treating "есть" as availability', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'промокод есть?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'price_discount');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /промокод/);
+    assert.doesNotMatch(second.answer, /В наличии 3 шт/);
+  });
+
+  it('answers cheaper-price follow-up for inactive products instead of falling back', () => {
+    const first = handleCustomerMessage({
+      message: 'lamzu atlantis mini pro есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а дешевле можно?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'price_discount');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /LAMZU Atlantis Mini Pro/);
+    assert.match(second.answer, /12\s?990/);
+    assert.doesNotMatch(second.answer, /Я могу проверить/);
+  });
+
   it('answers Russian color follow-up for the previously found product', () => {
     const first = handleCustomerMessage({
       message: 'wlmouse beast max есть?',

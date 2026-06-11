@@ -164,13 +164,18 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.ORDER_HELP, 0.9, hint ? { hint } : {});
   }
   if (messageLooksLikeDeliveryTerms(message)) return match(INTENTS.DELIVERY_TERMS, 0.88);
+  if (messageLooksLikePrice(message)) {
+    return match(INTENTS.PRICE_DISCOUNT, 0.86, {
+      hint: extractProductHint(message),
+      priceDetail: extractPriceDetail(message),
+    });
+  }
   if (messageLooksLikeAvailability(message)) {
     return match(INTENTS.AVAILABILITY, 0.88, {
       hint: extractProductHint(message),
       productDetail: extractProductAvailabilityDetail(message),
     });
   }
-  if (messageLooksLikePrice(message)) return match(INTENTS.PRICE_DISCOUNT, 0.86, { hint: extractProductHint(message) });
   if (messageLooksLikeProductAdvice(message)) return match(INTENTS.PRODUCT_ADVICE, 0.76);
   if (looksLikeShortProductReference(message)) return match(INTENTS.AVAILABILITY, 0.72, { hint: extractProductHint(message) });
   if (messageLooksLikeOrder(message)) return match(INTENTS.ORDER_STATUS, 0.9, { hint: extractOrderHint(message) });
@@ -273,7 +278,15 @@ function messageLooksLikeDeliveryTerms(message) {
 }
 
 function messageLooksLikePrice(message) {
-  return /(цена|стоим|стоить|стоят|сколько.{0,80}(стоит|стоят|стоить|цена|цены)|сколько будет|будет стоить|скидк|промокод|актуальная цена|предварительная цена)/i.test(message);
+  return /(цена|стоим|стоить|стоят|сколько.{0,80}(стоит|стоят|стоить|цена|цены)|сколько будет|будет стоить|скидк|промокод|акци[яи]|дешевле|дешев|снизить|скинуть|торг|актуальная цена|предварительная цена)/i.test(message);
+}
+
+function extractPriceDetail(message) {
+  if (/(скидк|промокод|акци[яи]|дешевле|дешев|снизить|скинуть|торг)/i.test(message)) {
+    return 'discount';
+  }
+
+  return 'price';
 }
 
 function messageLooksLikeProductAdvice(message) {

@@ -212,6 +212,29 @@ export function composeProductPriceAnswer(product) {
   return `По товару ${product.name}: ${parts.join(', ')}. Итог с доставкой считается в корзине.`;
 }
 
+export function composeProductDiscountAnswer(product) {
+  const name = product?.name || 'этому товару';
+  const parts = [];
+
+  if (isPublicPriceReliable(product?.price)) {
+    parts.push(`текущая цена ${formatMoney(product.price)}`);
+  }
+
+  if (isPublicPriceReliable(product?.oldPrice) && product.oldPrice > (product.price || 0)) {
+    parts.push(`старая цена ${formatMoney(product.oldPrice)}`);
+  }
+
+  if (isPublicPriceReliable(product?.preorderPrice)) {
+    parts.push(`предзаказ ${formatMoney(product.preorderPrice)}`);
+  }
+
+  const priceText = parts.length
+    ? `По товару ${name}: ${parts.join(', ')}.`
+    : `По товару ${name} не вижу надежной публичной цены в базе.`;
+
+  return `${priceText} Отдельный промокод или ручную скидку в базе не вижу. Итоговая цена проверяется в карточке и корзине; если промокод не срабатывает, передам оператору.`;
+}
+
 export function composeProductOrderHelpAnswer(product) {
   const name = product.name || 'этот товар';
   const lines = [];

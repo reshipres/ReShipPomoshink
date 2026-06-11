@@ -6,6 +6,7 @@ import {
   composeOrderDetailAnswer,
   composeOrderStatusAnswer,
   composeProductAvailabilityAnswer,
+  composeProductDiscountAnswer,
   composeProductOrderHelpAnswer,
   composeProductPriceAnswer,
   composeProductRestockTimingAnswer,
@@ -281,6 +282,10 @@ function routeDecision(classified, message, context) {
       if (productContext) {
         const lookupDecision = composeProductLookupDecision(productContext, 'price_discount', classified.confidence);
         if (lookupDecision) return lookupDecision;
+
+        if (classified.priceDetail === 'discount') {
+          return answer('price_discount', composeProductDiscountAnswer(productContext), ['Есть в наличии?', 'Как оформить?', 'Позови оператора'], classified.confidence);
+        }
 
         return answer('price_discount', composeProductPriceAnswer(productContext), ['Есть в наличии?', 'Как оформить?', 'Позови оператора'], classified.confidence);
       }
