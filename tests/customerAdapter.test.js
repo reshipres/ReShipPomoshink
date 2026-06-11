@@ -235,6 +235,48 @@ describe('customer-style order lookup conversations', () => {
     assert.doesNotMatch(second.answer, /Если нужно изменить адрес/);
   });
 
+  it('answers payment status follow-up from the latest known order', () => {
+    const first = handleCustomerMessage({
+      message: 'где мой заказ',
+      customer: { id: 'customer-ivanov' },
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'оплата прошла?',
+      session: first.nextSession,
+      customer: { id: 'customer-ivanov' },
+      orders,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /#7_M/);
+    assert.match(second.answer, /оплата зафиксирована/);
+    assert.doesNotMatch(second.answer, /Не нашел заказ/);
+    assert.doesNotMatch(second.answer, /Пришлите номер заказа/);
+  });
+
+  it('answers payment method follow-up without treating it as an order lookup', () => {
+    const first = handleCustomerMessage({
+      message: 'RS-20250601-AB123',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'как оплатить?',
+      session: first.nextSession,
+      orders,
+    });
+
+    assert.equal(second.intent, 'payment');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup, undefined);
+    assert.match(second.answer, /Оплата доступна/);
+    assert.doesNotMatch(second.answer, /Не нашел заказ/);
+  });
+
   it('answers pickup follow-up after a short order number', () => {
     const first = handleCustomerMessage({
       message: '6_L',
@@ -252,6 +294,27 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(second.systemLookup.status, 'found');
     assert.match(second.answer, /Нашел заказ #6_L/);
     assert.match(second.answer, /Способ получения/);
+  });
+
+  it('does not search for an order by "I do not have the number" replies', () => {
+    const first = handleCustomerMessage({
+      message: 'где мой заказ',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'у меня нет номера',
+      session: first.nextSession,
+      orders,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'ask_clarifying_question');
+    assert.equal(second.systemLookup, undefined);
+    assert.equal(second.contextRequest.strategy, 'ask_for_hint');
+    assert.match(second.answer, /Номер заказа не обязателен/);
+    assert.match(second.answer, /телефону, фамилии/);
+    assert.doesNotMatch(second.answer, /Не нашел заказ/);
   });
 
   it('answers recipient phone follow-up with a masked number', () => {

@@ -86,6 +86,10 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.ORDER_STATUS, 0.9, { detail: orderDetail });
   }
 
+  if (messageLooksLikePaymentMethodQuestion(message)) {
+    return match(INTENTS.PAYMENT, 0.86);
+  }
+
   if (looksLikeDeliveryDataPayload(message)) {
     return match(INTENTS.DELIVERY_DATA, 0.96);
   }
@@ -115,6 +119,10 @@ export function classifyMessage(message, session = {}) {
   }
 
   if (pendingRequest?.type === 'order' && looksLikeLookupFragment(message)) {
+    if (messageLooksLikeMissingOrderIdentifier(message)) {
+      return match(INTENTS.ORDER_STATUS, 0.9, { missingIdentifier: true });
+    }
+
     return match(INTENTS.ORDER_LOOKUP_FOLLOWUP, 0.92, { hint: extractOrderHint(message) || message.trim() });
   }
 
@@ -134,6 +142,10 @@ export function classifyMessage(message, session = {}) {
   }
 
   if (lastIntent === 'order_status' && looksLikeLookupFragment(message)) {
+    if (messageLooksLikeMissingOrderIdentifier(message)) {
+      return match(INTENTS.ORDER_STATUS, 0.9, { missingIdentifier: true });
+    }
+
     return match(INTENTS.ORDER_LOOKUP_FOLLOWUP, 0.9, { hint: extractOrderHint(message) || message.trim() });
   }
 
@@ -301,6 +313,10 @@ function extractOrderDetailRequest(message) {
   if (extractOrderHint(message)) return null;
   if (/(изменить|поменять|сменить|исправить|заменить|перенести)/i.test(message)) return null;
 
+  if (/(оплат[ауы]?\s+(прошл|зачисл|видн|есть)|плат[её]ж\s+(прош[её]л|видн|зачисл)|заказ\s+оплачен|он\s+оплачен|оплачен\s+ли|статус\s+оплат|видите\s+оплат)/i.test(message)) {
+    return 'payment_status';
+  }
+
   if (/(трек|трек-?номер|номер\s+(накладн|отправлен)|накладн)/i.test(message)) {
     return 'tracking';
   }
@@ -318,6 +334,18 @@ function extractOrderDetailRequest(message) {
   }
 
   return null;
+}
+
+function messageLooksLikePaymentMethodQuestion(message) {
+  if (/(не\s+(приш|вид|получ|получилось|получается|проходит|могу)|ошибк|списал|списали|деньги|вернул|возвращ|статус.*не)/i.test(message)) {
+    return false;
+  }
+
+  return /(как.*оплат|чем.*оплат|можно.*оплат|оплатить.*(карт|сбп|сайт)|сбп|карта|картой|номер карты|перевод|налож|чек|квитанц)/i.test(message);
+}
+
+function messageLooksLikeMissingOrderIdentifier(message) {
+  return /(нет|не\s+знаю|не\s+помню|не\s+наш[её]л|потерял).{0,40}(номер|заказ|трек|накладн)|(?:номер|трек|накладн).{0,40}(нет|не\s+знаю|не\s+помню|потерял)|^(не\s+знаю|не\s+помню|нет\s+номера|нету\s+номера)$/i.test(message);
 }
 
 function messageLooksLikeCustomOrderRequest(message) {

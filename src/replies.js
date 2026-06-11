@@ -83,6 +83,10 @@ export function composeOrderStatusAnswer(order) {
 export function composeOrderDetailAnswer(order, detail) {
   const orderLabel = order.crmOrderNumber || order.orderNumber || order.shortId || order.orderId || 'без номера';
 
+  if (detail === 'payment_status') {
+    return composeOrderPaymentStatusAnswer(order, orderLabel);
+  }
+
   if (detail === 'tracking') {
     if (order.cdekTrackingNumber) {
       return `По заказу #${orderLabel} трек CDEK: ${order.cdekTrackingNumber}. Статус CDEK: ${CDEK_STATUS_TEXT[order.cdekOrderStatus] || order.cdekOrderStatus || 'пока не обновлен'}.`;
@@ -118,6 +122,25 @@ export function composeOrderDetailAnswer(order, detail) {
   }
 
   return composeOrderStatusAnswer(order);
+}
+
+function composeOrderPaymentStatusAnswer(order, orderLabel) {
+  const rawStatus = normalizeStatus(order.crmStatusSlug || order.crmStatusGroup || order.status);
+  const statusText = ORDER_STATUS_TEXT[rawStatus] || rawStatus.replace(/[_-]/g, ' ') || 'статус пока не определен';
+
+  if (['pending', 'awaiting_payment', 'waiting_payment', 'new'].includes(rawStatus)) {
+    return `По заказу #${orderLabel} сейчас статус: ${statusText}. Оплату по этому заказу пока не вижу. Если деньги уже списались, передам оператору для проверки платежа.`;
+  }
+
+  if (['cancelled', 'canceled'].includes(rawStatus)) {
+    return `По заказу #${orderLabel} сейчас статус: ${statusText}. Если оплата списалась или статус кажется ошибочным, передам оператору для проверки.`;
+  }
+
+  if (['paid', 'processing', 'assembling', 'assembly', 'packaging', 'packing', 'shipping', 'delivery', 'shipped', 'ready_for_recipient', 'delivered', 'completed', 'complete'].includes(rawStatus)) {
+    return `По заказу #${orderLabel} оплата зафиксирована: сейчас статус "${statusText}".`;
+  }
+
+  return `По заказу #${orderLabel} сейчас статус: ${statusText}. Если нужно точно проверить платеж, передам оператору.`;
 }
 
 function composeOrderDestinationAnswer(order, orderLabel) {

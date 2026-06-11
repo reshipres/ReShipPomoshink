@@ -150,6 +150,22 @@ describe('order answer quality', () => {
     assert.match(result.answer, /\+7 \*\*\* \*\*\* 22 33/);
     assert.doesNotMatch(result.answer, /\+7 916 111 22 33/);
   });
+
+  it('answers payment status from order context', () => {
+    const result = handleMessage({
+      message: 'он оплачен?',
+      orderContext: {
+        orderNumber: '7_M',
+        status: 'shipping',
+      },
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'answer');
+    assert.match(result.answer, /#7_M/);
+    assert.match(result.answer, /оплата зафиксирована/);
+    assert.doesNotMatch(result.answer, /Оплата доступна/);
+  });
 });
 
 describe('low-friction product flow', () => {

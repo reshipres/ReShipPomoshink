@@ -187,6 +187,13 @@ function routeDecision(classified, message, context) {
         ], classified.confidence);
       }
 
+      if (classified.missingIdentifier) {
+        return ask('order_status', 'Номер заказа не обязателен. Могу проверить по телефону, фамилии/ФИО получателя или треку CDEK. Если этих данных нет под рукой, передам оператору.', [
+          'Позови оператора',
+          'Проверить по телефону',
+        ], classified.confidence, { type: 'order', strategy: 'ask_for_hint' });
+      }
+
       return ask('order_status', classified.hint
         ? 'Проверю заказ по этим данным. Если не найду точное совпадение, попрошу уточнить номер заказа, трек CDEK, телефон или фамилию получателя.'
         : 'Проверю заказ. Пришлите номер заказа, трек CDEK, телефон или фамилию получателя.', [
