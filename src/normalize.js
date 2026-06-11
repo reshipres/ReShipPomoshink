@@ -92,7 +92,7 @@ export function looksLikeProductReference(message = '') {
 
   if (extractProductSlug(value) || hasUrl(value)) return true;
 
-  return /(wlmouse|g-wolves|gwolves|lamzu|finalmouse|vaxee|ninjutso|pulsar|atk|vxe|sora|op1|xm2|u2|htx|hsk|beast|waizowl|wooting|endgame|logitech|meow gaming|maya|fenrir|apex|omron|xsoft|soft|mid|коврик|ковер|мышь|мышка|клавиатур|глайд|скейт|свитч|switch|микрик|энкодер|цвет|черн|бел|красн|син)/i.test(text);
+  return /(wlmouse|g-wolves|gwolves|lamzu|finalmouse|vaxee|ninjutso|pulsar|atk|vxe|sora|op1|xm2|u2|htx|hsk|beast|mini|max|black|white|red|blue|pink|purple|yellow|green|orange|waizowl|wooting|endgame|logitech|meow gaming|maya|fenrir|apex|omron|xsoft|soft|mid|коврик|ковер|мышь|мышка|клавиатур|глайд|скейт|свитч|switch|микрик|энкодер|цвет|черн|бел|красн|син|розов|фиолет|желт|зел|оранж)/i.test(text);
 }
 
 export function looksLikeLookupFragment(message = '') {

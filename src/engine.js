@@ -393,6 +393,16 @@ function composeOrderLookupDecision(orderContext, classified, message) {
 function composeProductLookupDecision(productContext, intent, confidence) {
   const lookupStatus = productContext.lookupStatus || productContext.resultStatus || null;
 
+  if (lookupStatus === 'variant_not_found') {
+    const baseProduct = productContext.baseProduct || {};
+    const baseName = baseProduct.name || 'текущей модели';
+
+    return ask(intent, `По текущей модели ${baseName} не нашел такой вариант в базе. Если нужен другой цвет или версия, напишите точную модель/цвет, либо передам вопрос оператору.`, [
+      'Позови оператора',
+      'Проверить другой товар',
+    ], confidence, { type: 'product', strategy: 'ask_for_exact_hint' });
+  }
+
   if (lookupStatus === 'not_found') {
     return ask(intent, 'Не нашел товар по этому названию в базе. Пришлите ссылку, артикул или точную модель; если карточка пропала с сайта, передам оператору.', [
       'Позови оператора',

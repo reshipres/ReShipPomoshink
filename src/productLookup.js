@@ -9,6 +9,9 @@ const PRODUCT_QUERY_STOPWORDS = new Set([
   'возьму',
   'где',
   'да',
+  'другой',
+  'другая',
+  'другое',
   'есть',
   'есть ли',
   'и',
@@ -31,6 +34,8 @@ const PRODUCT_QUERY_STOPWORDS = new Set([
   'стоимость',
   'тогда',
   'товар',
+  'цвет',
+  'цвета',
   'хочу',
   'цена',
   'этот',
@@ -95,9 +100,24 @@ function productKeys(product) {
 function productQueryTokens(value) {
   return normalizeText(value)
     .split(/\s+/)
+    .map(canonicalProductToken)
     .filter((token) => token.length >= 2 && !PRODUCT_QUERY_STOPWORDS.has(token));
 }
 
 function normalizeSlug(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function canonicalProductToken(token) {
+  if (/^черн/i.test(token)) return 'black';
+  if (/^бел/i.test(token)) return 'white';
+  if (/^красн/i.test(token)) return 'red';
+  if (/^син/i.test(token)) return 'blue';
+  if (/^розов/i.test(token)) return 'pink';
+  if (/^фиолет/i.test(token)) return 'purple';
+  if (/^желт/i.test(token)) return 'yellow';
+  if (/^зел/i.test(token)) return 'green';
+  if (/^оранж/i.test(token)) return 'orange';
+
+  return token;
 }

@@ -71,6 +71,12 @@ describe('system product lookup', () => {
     assert.equal(product.name, 'WLmouse Beast Max Black');
   });
 
+  it('finds a product by Russian color follow-up words', () => {
+    const product = findProductContext('а черный есть?', products);
+
+    assert.equal(product.slug, 'wlmouse-beast-max-black');
+  });
+
   it('returns multiple when the model hint is ambiguous', () => {
     const product = findProductContext('beast', products);
 
@@ -514,6 +520,65 @@ describe('customer-style product lookup conversations', () => {
     assert.match(second.answer, /WLmouse Beast Max Black/);
     assert.match(second.answer, /15\s?990/);
     assert.doesNotMatch(second.answer, /Пришлите ссылку/);
+  });
+
+  it('answers Russian color follow-up for the previously found product', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а черный?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'availability');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /WLmouse Beast Max Black/);
+    assert.match(second.answer, /В наличии 3 шт/);
+    assert.doesNotMatch(second.answer, /Не нашел товар/);
+  });
+
+  it('does not ask for a link when another color is missing for current product', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а белый есть?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'availability');
+    assert.equal(second.action, 'ask_clarifying_question');
+    assert.equal(second.systemLookup.status, 'variant_not_found');
+    assert.match(second.answer, /WLmouse Beast Max Black/);
+    assert.match(second.answer, /не нашел такой вариант/);
+    assert.doesNotMatch(second.answer, /Пришлите ссылку/);
+  });
+
+  it('switches to a short variant model instead of reusing the previous product', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а mini есть?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'availability');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /WLmouse Beast X Mini/);
+    assert.doesNotMatch(second.answer, /WLmouse Beast Max Black/);
   });
 
   it('answers order help follow-up for the previously found product', () => {

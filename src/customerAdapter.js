@@ -86,7 +86,16 @@ function resolveProductContext(result, products, session) {
       return findLastProductContext(session, products);
     }
 
-    return findProductContext(request.hint, products);
+    const productContext = findProductContext(request.hint, products);
+    if (productContext.lookupStatus === 'multiple') {
+      return resolveContextualProductVariant(request.hint, session, products) || productContext;
+    }
+
+    if (productContext.lookupStatus === 'not_found') {
+      return resolveProductVariantContext(request.hint, session, products) || productContext;
+    }
+
+    return productContext;
   }
 
   if (result.intent === 'order_help') {
@@ -95,6 +104,32 @@ function resolveProductContext(result, products, session) {
   }
 
   return null;
+}
+
+function resolveContextualProductVariant(hint, session, products) {
+  const baseProduct = findLastProductContext(session, products);
+  const brand = firstProductWord(baseProduct?.name);
+  if (!brand) return null;
+
+  const productContext = findProductContext(`${brand} ${hint}`, products);
+  if (productContext?.lookupStatus !== 'not_found' && productContext?.lookupStatus !== 'multiple') {
+    return productContext;
+  }
+
+  return null;
+}
+
+function resolveProductVariantContext(hint, session, products) {
+  if (!messageLooksLikeProductVariantFollowup(hint)) return null;
+
+  const baseProduct = findLastProductContext(session, products);
+  if (!baseProduct) return null;
+
+  return {
+    lookupStatus: 'variant_not_found',
+    variantRequest: hint,
+    baseProduct,
+  };
 }
 
 function enrichSessionWithProduct(session, productContext) {
@@ -184,9 +219,17 @@ function isFoundOrderContext(orderContext) {
 
 function isFoundProductContext(productContext) {
   const lookupStatus = productContext?.lookupStatus || productContext?.resultStatus || null;
-  if (['not_found', 'multiple', 'ambiguous'].includes(lookupStatus)) return false;
+  if (['not_found', 'multiple', 'ambiguous', 'variant_not_found'].includes(lookupStatus)) return false;
 
   return Boolean(productContext?.name || productContext?.slug);
+}
+
+function messageLooksLikeProductVariantFollowup(message) {
+  return /(цвет|друг(ой|ая|ое)|черн|бел|красн|син|розов|фиолет|желт|зел|оранж|black|white|red|blue|pink|purple|yellow|green|orange)/i.test(message);
+}
+
+function firstProductWord(value) {
+  return String(value || '').trim().split(/\s+/).find(Boolean) || null;
 }
 
 function messageLooksLikeOrderFollowup(message) {
