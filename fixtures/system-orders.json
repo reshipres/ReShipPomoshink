@@ -1,0 +1,50 @@
+[
+  {
+    "orderNumber": "RS-20250601-AB123",
+    "crmOrderNumber": "6_L",
+    "shortId": "6_L",
+    "status": "processing",
+    "deliveryMethod": "CDEK_PVZ",
+    "cdekTrackingNumber": "1234567890",
+    "cdekOrderStatus": "ACCEPTED",
+    "deliveryTime": "2-4 рабочих дня",
+    "customerId": "customer-ivanov",
+    "customerTelegramId": "tg-ivanov",
+    "recipientFullName": "Иван Иванов",
+    "recipientLastName": "Иванов",
+    "recipientPhone": "+7 999 123 45 67",
+    "createdAt": "2026-06-01T10:00:00.000Z",
+    "updatedAt": "2026-06-11T18:30:00.000Z"
+  },
+  {
+    "orderNumber": "RS-20250602-CD456",
+    "crmOrderNumber": "7_M",
+    "shortId": "7_M",
+    "status": "shipping",
+    "deliveryMethod": "CDEK_COURIER",
+    "cdekTrackingNumber": "9876543210",
+    "cdekOrderStatus": "TAKEN_BY_COURIER",
+    "deliveryTime": "1-2 рабочих дня",
+    "customerId": "customer-ivanov",
+    "customerTelegramId": "tg-ivanov",
+    "recipientFullName": "Илья Иванов",
+    "recipientLastName": "Иванов",
+    "recipientPhone": "+7 999 765 43 21",
+    "createdAt": "2026-06-02T10:00:00.000Z",
+    "updatedAt": "2026-06-12T11:15:00.000Z"
+  },
+  {
+    "orderNumber": "RS-20250603-EF789",
+    "crmOrderNumber": "8_N",
+    "shortId": "8_N",
+    "status": "ready_for_recipient",
+    "deliveryMethod": "PICKUP",
+    "customerId": "customer-petrova",
+    "customerTelegramId": "tg-petrova",
+    "recipientFullName": "Анна Петрова",
+    "recipientLastName": "Петрова",
+    "recipientPhone": "+7 916 111 22 33",
+    "createdAt": "2026-06-03T10:00:00.000Z",
+    "updatedAt": "2026-06-12T09:05:00.000Z"
+  }
+]
