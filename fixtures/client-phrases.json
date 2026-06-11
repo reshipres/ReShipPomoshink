@@ -1,0 +1,18 @@
+[
+  { "message": "привет", "intent": "greeting", "action": "answer" },
+  { "message": "привет где мой заказ", "intent": "order_status", "action": "ask_clarifying_question" },
+  { "message": "как тебя зовут", "intent": "assistant_identity", "action": "answer" },
+  { "message": "спасибо", "intent": "acknowledgement", "action": "answer" },
+  { "message": "где мой заказ?", "intent": "order_status", "action": "ask_clarifying_question" },
+  { "message": "другой", "session": { "lastIntent": "order_status" }, "intent": "order_status", "action": "ask_clarifying_question" },
+  { "message": "Иванов", "session": { "lastIntent": "order_status" }, "intent": "order_status", "action": "ask_clarifying_question" },
+  { "message": "+7 999 123 45 67", "session": { "lastIntent": "order_status" }, "intent": "order_status", "action": "ask_clarifying_question" },
+  { "message": "позови оператора", "intent": "human_requested", "action": "handoff_to_operator" },
+  { "message": "хочу поменять адрес доставки", "intent": "order_change", "action": "handoff_to_operator" },
+  { "message": "деньги списались а заказ не появился", "intent": "payment", "action": "handoff_to_operator" },
+  { "message": "товар пришел поврежденный", "intent": "warranty_or_return", "action": "handoff_to_operator" },
+  { "message": "есть ли коврик в наличии", "intent": "availability", "action": "ask_clarifying_question" },
+  { "message": "сколько доставка в спб", "intent": "delivery_terms", "action": "answer" },
+  { "message": "как оплатить заказ", "intent": "payment", "action": "answer" },
+  { "message": "адрес самовывоза", "intent": "pickup", "action": "answer" }
+]

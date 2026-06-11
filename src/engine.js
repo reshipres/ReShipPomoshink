@@ -1,0 +1,167 @@
+import { classifyMessage, INTENTS } from './intents.js';
+import {
+  answer,
+  ask,
+  composeOrderStatusAnswer,
+  composeProductAvailabilityAnswer,
+  composeProductPriceAnswer,
+  handoff,
+} from './replies.js';
+
+export function handleMessage({ message, session = {}, orderContext = null, productContext = null } = {}) {
+  const text = String(message || '').trim();
+  if (!text) {
+    return {
+      action: 'ask_clarifying_question',
+      intent: 'other',
+      confidence: 1,
+      answer: 'Напишите вопрос одним сообщением, я помогу.',
+      needsHandoff: false,
+      handoffReason: 'none',
+      suggestedReplies: ['Где мой заказ?', 'Есть товар в наличии?', 'Позови оператора'],
+      nextSession: session,
+    };
+  }
+
+  const classified = classifyMessage(text, session);
+  const decision = routeDecision(classified, text, { session, orderContext, productContext });
+
+  return {
+    ...decision,
+    nextSession: {
+      ...session,
+      lastIntent: decision.intent,
+      lastAction: decision.action,
+      lastAnswer: decision.answer,
+    },
+  };
+}
+
+function routeDecision(classified, message, context) {
+  const { orderContext, productContext } = context;
+
+  switch (classified.intent) {
+    case INTENTS.GREETING:
+      return answer('greeting', 'Здравствуйте. Помогу проверить заказ, доставку, оплату, наличие товара или передам вопрос оператору.', [
+        'Где мой заказ?',
+        'Есть товар в наличии?',
+        'Позови оператора',
+      ], classified.confidence);
+
+    case INTENTS.ASSISTANT_IDENTITY:
+      return answer('assistant_identity', 'Я помощник ReShip. Проверяю простые вопросы по заказам, доставке, оплате, наличию и быстро передаю сложные случаи оператору.', [
+        'Где мой заказ?',
+        'Сколько доставка?',
+        'Позови оператора',
+      ], classified.confidence);
+
+    case INTENTS.ACKNOWLEDGEMENT:
+      return answer('acknowledgement', 'Пожалуйста. Могу еще проверить заказ, наличие товара или позвать оператора.', [
+        'Где мой заказ?',
+        'Есть товар в наличии?',
+        'Позови оператора',
+      ], classified.confidence);
+
+    case INTENTS.ORDER_SWITCH:
+      return ask('order_status', 'Если нужен другой заказ, пришлите номер заказа, трек CDEK, телефон или фамилию получателя.', [
+        'Проверь последний заказ',
+        'Позови оператора',
+      ], classified.confidence, { type: 'order', strategy: 'ask_for_hint' });
+
+    case INTENTS.ORDER_LOOKUP_FOLLOWUP:
+    case INTENTS.ORDER_STATUS:
+      if (orderContext) {
+        return answer('order_status', composeOrderStatusAnswer(orderContext), [
+          'Обнови статус CDEK',
+          'Когда ждать доставку?',
+          'Позови оператора',
+        ], classified.confidence);
+      }
+
+      return ask('order_status', 'Проверю заказ. Пришлите номер заказа, трек CDEK, телефон или фамилию получателя.', [
+        'Проверь последний заказ',
+        'Позови оператора',
+      ], classified.confidence, {
+        type: 'order',
+        strategy: classified.hint ? 'by_hint' : 'latest_or_hint',
+        hint: classified.hint || null,
+      });
+
+    case INTENTS.HUMAN_REQUESTED:
+      return handoff('human_requested', 'Понял, передаю вопрос оператору. Контекст сохраню, чтобы не пришлось повторять все сначала.', 'requested_human', 'Клиент просит оператора', `Клиент написал: "${message}".`);
+
+    case INTENTS.ORDER_CHANGE:
+      return handoff('order_change', 'Это лучше сделает оператор: передаю запрос на изменение заказа.', 'order_change', 'Изменение заказа', `Клиент хочет изменить заказ: "${message}".`);
+
+    case INTENTS.BILLING_ISSUE:
+      return handoff('payment', 'По оплате нужен оператор. Передаю вопрос, чтобы проверили платеж и статус заказа.', 'billing_issue', 'Проблема с оплатой', `Клиент сообщает о проблеме оплаты: "${message}".`);
+
+    case INTENTS.DEFECT_OR_DAMAGE:
+      return handoff('warranty_or_return', 'Похоже на дефект или повреждение. Передаю оператору, здесь важно разобрать случай вручную.', 'defect_or_damage', 'Брак или повреждение', `Клиент сообщает о дефекте/повреждении: "${message}".`);
+
+    case INTENTS.REFUND_OR_RETURN:
+      return handoff('warranty_or_return', 'Возврат, обмен или спорный вопрос передаю оператору.', 'refund_or_return', 'Возврат или обмен', `Клиент просит возврат/обмен: "${message}".`);
+
+    case INTENTS.ANGRY_CUSTOMER:
+      return handoff('other', 'Понимаю, передаю вопрос оператору, чтобы разобрали ситуацию вручную.', 'angry_customer', 'Недовольный клиент', `Клиент недоволен: "${message}".`);
+
+    case INTENTS.DELIVERY_TERMS:
+      return answer('delivery_terms', 'Срок зависит от города и способа доставки. CDEK обычно считается в корзине, отправка после оплаты обычно занимает 1-3 рабочих дня. Самовывоз в Москве доступен после подтверждения готовности заказа.', [
+        'Где мой заказ?',
+        'Адрес самовывоза',
+        'Позови оператора',
+      ], classified.confidence);
+
+    case INTENTS.AVAILABILITY:
+      if (productContext) {
+        return answer('availability', composeProductAvailabilityAnswer(productContext), ['Сколько стоит?', 'Как оформить?', 'Позови оператора'], classified.confidence);
+      }
+      return ask('availability', 'Проверю наличие. Пришлите ссылку на товар, артикул или точное название модели.', [
+        'Проверить заказ',
+        'Позови оператора',
+      ], classified.confidence, { type: 'product', strategy: 'ask_for_hint' });
+
+    case INTENTS.PRICE_DISCOUNT:
+      if (productContext) {
+        return answer('price_discount', composeProductPriceAnswer(productContext), ['Есть в наличии?', 'Как оформить?', 'Позови оператора'], classified.confidence);
+      }
+      return ask('price_discount', 'Актуальная цена отображается в карточке товара и корзине. Пришлите ссылку или точное название, проверю по базе.', [
+        'Проверить наличие',
+        'Позови оператора',
+      ], classified.confidence, { type: 'product', strategy: 'ask_for_hint' });
+
+    case INTENTS.PRODUCT_ADVICE:
+      return ask('product_advice', 'Помогу с подбором. Напишите модель устройства, хват/размер руки или текущий коврик/мышь. По совместимости запчастей лучше передам оператору.', [
+        'Позови оператора',
+        'Проверить наличие',
+      ], classified.confidence);
+
+    case INTENTS.ORDER_HELP:
+      return answer('order_help', 'Чтобы оформить заказ: откройте карточку товара, добавьте позицию в корзину, укажите контакты, выберите доставку или самовывоз и оплатите заказ на сайте.', ['Как оплатить?', 'Сколько доставка?', 'Позови оператора'], classified.confidence);
+
+    case INTENTS.PAYMENT:
+      return answer('payment', 'Оплата доступна картой МИР или через СБП на сайте. Наложенный платеж сейчас недоступен. Если деньги списались, а заказ не обновился, передам оператору.', ['Где мой заказ?', 'Позови оператора'], classified.confidence);
+
+    case INTENTS.PICKUP:
+      return answer('pickup', 'Самовывоз в Москве: Гончарный проезд, 8/40, м. Таганская. Выдача Пн-Вс с 14:00 до 16:00 после подтверждения готовности заказа.', ['Проверь мой заказ', 'Позови оператора'], classified.confidence);
+
+    case INTENTS.MODDING:
+      return answer('modding', 'Моддинг обычно занимает 5-10 рабочих дней после получения устройства. На работы и замененные компоненты действует гарантия 30 дней.', ['Как передать устройство?', 'Позови оператора'], classified.confidence);
+
+    case INTENTS.WARRANTY_OR_RETURN:
+      return answer('warranty_or_return', 'Возврат товара надлежащего качества возможен в течение 7 дней при сохранении товарного вида и упаковки. Брак, повреждения и возврат денег передам оператору.', ['Позови оператора', 'Где мой заказ?'], classified.confidence);
+
+    case INTENTS.ACCOUNT:
+      return answer('account', 'Личный кабинет нужен, чтобы видеть заказы, тикеты поддержки и бонусы. Если не получается войти или восстановить доступ, передам оператору.', ['Позови оператора', 'Где мой заказ?'], classified.confidence);
+
+    case INTENTS.LOYALTY:
+      return answer('loyalty', 'Баллы ReShip Points начисляются за покупки и активности. Обычно 1 балл = 1 рубль, списать можно до 50% стоимости будущего заказа.', ['Где посмотреть баллы?', 'Позови оператора'], classified.confidence);
+
+    default:
+      return ask('other', 'Я могу проверить заказ, наличие товара, цену, оплату, доставку, самовывоз и базовые правила гарантии. Что именно нужно?', [
+        'Где мой заказ?',
+        'Есть товар в наличии?',
+        'Позови оператора',
+      ], classified.confidence);
+  }
+}

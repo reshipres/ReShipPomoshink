@@ -1,0 +1,15 @@
+{
+  "name": "reship-pomoshink",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic customer support bot brain for ReShip.",
+  "scripts": {
+    "test": "node --test",
+    "eval": "node scripts/evaluate-fixtures.mjs",
+    "chat": "node scripts/chat.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
