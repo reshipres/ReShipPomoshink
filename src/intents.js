@@ -114,7 +114,11 @@ export function classifyMessage(message, session = {}) {
   }
 
   if (pendingRequest?.type === 'product' && looksLikeProductReference(message)) {
-    const intent = pendingRequest.intent === INTENTS.PRICE_DISCOUNT ? INTENTS.PRICE_DISCOUNT : INTENTS.AVAILABILITY;
+    const intent = pendingRequest.intent === INTENTS.PRICE_DISCOUNT
+      ? INTENTS.PRICE_DISCOUNT
+      : pendingRequest.intent === INTENTS.PRODUCT_SEARCH
+        ? INTENTS.PRODUCT_SEARCH
+        : INTENTS.AVAILABILITY;
     return match(intent, 0.9, { hint: extractProductSlug(message) || message.trim() });
   }
 
@@ -234,7 +238,7 @@ function messageLooksLikeDeliveryTerms(message) {
 }
 
 function messageLooksLikePrice(message) {
-  return /(цена|стоим|стоить|стоят|сколько стоит|сколько стоят|сколько будет|будет стоить|скидк|промокод|актуальная цена|предварительная цена)/i.test(message);
+  return /(цена|стоим|стоить|стоят|сколько.{0,80}(стоит|стоят|стоить|цена|цены)|сколько будет|будет стоить|скидк|промокод|актуальная цена|предварительная цена)/i.test(message);
 }
 
 function messageLooksLikeProductAdvice(message) {

@@ -1,0 +1,27 @@
+[
+  {
+    "name": "WLmouse Beast Max Black",
+    "slug": "wlmouse-beast-max-black",
+    "aliases": ["wlmouse beast max", "beast max", "влмаус бист макс"],
+    "quantity": 3,
+    "price": 15990,
+    "sklad": "Москва"
+  },
+  {
+    "name": "WLmouse Beast X Mini",
+    "slug": "wlmouse-beast-x-mini",
+    "aliases": ["wlmouse beast x mini", "beast x mini", "beast mini"],
+    "quantity": 0,
+    "preorderPrice": 14990,
+    "sklad": "Предзаказ"
+  },
+  {
+    "name": "LAMZU Atlantis Mini Pro",
+    "slug": "lamzu-atlantis-mini-pro",
+    "aliases": ["lamzu atlantis mini", "atlantis mini pro", "ламзу атлантис мини"],
+    "quantity": 0,
+    "price": 12990,
+    "isActive": false,
+    "sklad": "Нет в наличии"
+  }
+]

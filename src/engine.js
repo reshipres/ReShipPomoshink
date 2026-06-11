@@ -227,6 +227,9 @@ function routeDecision(classified, message, context) {
 
     case INTENTS.AVAILABILITY:
       if (productContext) {
+        const lookupDecision = composeProductLookupDecision(productContext, 'availability', classified.confidence);
+        if (lookupDecision) return lookupDecision;
+
         return answer('availability', composeProductAvailabilityAnswer(productContext), ['Сколько стоит?', 'Как оформить?', 'Позови оператора'], classified.confidence);
       }
       return ask('availability', classified.hint
@@ -237,6 +240,13 @@ function routeDecision(classified, message, context) {
       ], classified.confidence, { type: 'product', strategy: classified.hint ? 'by_hint' : 'ask_for_hint', hint: classified.hint || null });
 
     case INTENTS.PRODUCT_SEARCH:
+      if (productContext) {
+        const lookupDecision = composeProductLookupDecision(productContext, 'product_search', classified.confidence);
+        if (lookupDecision) return lookupDecision;
+
+        return answer('product_search', composeProductAvailabilityAnswer(productContext), ['Сколько стоит?', 'Позови оператора'], classified.confidence);
+      }
+
       return ask('product_search', classified.hint
         ? 'Проверю этот товар по базе. Если он не отображается на сайте, уточню наличие и актуальную карточку.'
         : 'Проверю товар по базе. Напишите точное название модели, артикул или ссылку, если он не находится на сайте.', [
@@ -246,6 +256,9 @@ function routeDecision(classified, message, context) {
 
     case INTENTS.PRICE_DISCOUNT:
       if (productContext) {
+        const lookupDecision = composeProductLookupDecision(productContext, 'price_discount', classified.confidence);
+        if (lookupDecision) return lookupDecision;
+
         return answer('price_discount', composeProductPriceAnswer(productContext), ['Есть в наличии?', 'Как оформить?', 'Позови оператора'], classified.confidence);
       }
       return ask('price_discount', classified.hint
@@ -337,6 +350,26 @@ function composeOrderLookupDecision(orderContext, classified, message) {
       `Клиент просит проверить движение доставки по заказу #${orderLabel}.${track}`,
       classified.confidence,
     );
+  }
+
+  return null;
+}
+
+function composeProductLookupDecision(productContext, intent, confidence) {
+  const lookupStatus = productContext.lookupStatus || productContext.resultStatus || null;
+
+  if (lookupStatus === 'not_found') {
+    return ask(intent, 'Не нашел товар по этому названию в базе. Пришлите ссылку, артикул или точную модель; если карточка пропала с сайта, передам оператору.', [
+      'Позови оператора',
+      'Проверить другой товар',
+    ], confidence, { type: 'product', strategy: 'ask_for_hint' });
+  }
+
+  if (lookupStatus === 'multiple' || lookupStatus === 'ambiguous') {
+    return ask(intent, 'Нашел несколько похожих товаров. Чтобы не перепутать наличие и цену, пришлите точную модель, цвет или ссылку на карточку.', [
+      'Позови оператора',
+      'Проверить другой товар',
+    ], confidence, { type: 'product', strategy: 'ask_for_exact_hint' });
   }
 
   return null;

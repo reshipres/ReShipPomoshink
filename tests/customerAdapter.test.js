@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';
-import { handleCustomerMessage, findLatestOrderContext, findOrderContext } from '../src/index.js';
+import {
+  handleCustomerMessage,
+  findLatestOrderContext,
+  findOrderContext,
+  findProductContext,
+} from '../src/index.js';
 
 const orders = JSON.parse(readFileSync(new URL('../fixtures/system-orders.json', import.meta.url), 'utf8'));
+const products = JSON.parse(readFileSync(new URL('../fixtures/system-products.json', import.meta.url), 'utf8'));
 
 describe('system order lookup', () => {
   it('finds an order by CDEK tracking number', () => {
@@ -42,6 +48,26 @@ describe('system order lookup', () => {
     const order = findLatestOrderContext({ telegramId: 'tg-petrova' }, orders);
 
     assert.equal(order.crmOrderNumber, '8_N');
+  });
+});
+
+describe('system product lookup', () => {
+  it('finds a product by public product URL', () => {
+    const product = findProductContext('https://reship.pro/product/wlmouse-beast-max-black', products);
+
+    assert.equal(product.slug, 'wlmouse-beast-max-black');
+  });
+
+  it('finds a product by model alias inside a customer question', () => {
+    const product = findProductContext('wlmouse beast max есть?', products);
+
+    assert.equal(product.name, 'WLmouse Beast Max Black');
+  });
+
+  it('returns multiple when the model hint is ambiguous', () => {
+    const product = findProductContext('beast', products);
+
+    assert.equal(product.lookupStatus, 'multiple');
   });
 });
 
@@ -213,5 +239,70 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(second.systemLookup.status, 'found');
     assert.match(second.answer, /Нашел заказ #6_L/);
     assert.doesNotMatch(second.answer, /Пришлите номер заказа/);
+  });
+});
+
+describe('customer-style product lookup conversations', () => {
+  it('answers availability when customer sends a known model', () => {
+    const result = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    assert.equal(result.intent, 'availability');
+    assert.equal(result.action, 'answer');
+    assert.equal(result.systemLookup.status, 'found');
+    assert.match(result.answer, /WLmouse Beast Max Black/);
+    assert.match(result.answer, /В наличии 3 шт/);
+    assert.doesNotMatch(result.answer, /Пришлите ссылку/);
+  });
+
+  it('answers price when customer sends a known model', () => {
+    const result = handleCustomerMessage({
+      message: 'сколько beast max стоит?',
+      products,
+    });
+
+    assert.equal(result.intent, 'price_discount');
+    assert.equal(result.action, 'answer');
+    assert.equal(result.systemLookup.status, 'found');
+    assert.match(result.answer, /15\s?990/);
+  });
+
+  it('asks for exact model when product hint is ambiguous', () => {
+    const result = handleCustomerMessage({
+      message: 'beast есть?',
+      products,
+    });
+
+    assert.equal(result.intent, 'availability');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.equal(result.systemLookup.status, 'multiple');
+    assert.match(result.answer, /несколько похожих товаров/);
+  });
+
+  it('explains when product is not found in the system', () => {
+    const result = handleCustomerMessage({
+      message: 'lamzu thorn есть?',
+      products,
+    });
+
+    assert.equal(result.intent, 'availability');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.equal(result.systemLookup.status, 'not_found');
+    assert.match(result.answer, /Не нашел товар/);
+  });
+
+  it('keeps product search intent when missing-site item is found in the system', () => {
+    const result = handleCustomerMessage({
+      message: 'я не могу найти lamzu atlantis mini на сайте',
+      products,
+    });
+
+    assert.equal(result.intent, 'product_search');
+    assert.equal(result.action, 'answer');
+    assert.equal(result.systemLookup.status, 'found');
+    assert.match(result.answer, /LAMZU Atlantis Mini Pro/);
+    assert.match(result.answer, /не активен в каталоге/);
   });
 });

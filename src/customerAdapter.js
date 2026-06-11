@@ -1,5 +1,6 @@
 import { handleMessage } from './engine.js';
 import { findLatestOrderContext, findOrderContext } from './orderLookup.js';
+import { findProductContext } from './productLookup.js';
 
 export function handleCustomerMessage({
   message,
@@ -39,7 +40,7 @@ export function handleCustomerMessage({
       ...second,
       systemLookup: {
         type: 'product',
-        status: 'found',
+        status: productContext.lookupStatus || 'found',
       },
     };
   }
@@ -67,10 +68,5 @@ function resolveProductContext(result, products) {
   const request = result.contextRequest;
   if (request?.type !== 'product' || !request.hint) return null;
 
-  const normalizedHint = String(request.hint).toLowerCase();
-  return products.find((product) => {
-    const name = String(product.name || '').toLowerCase();
-    const slug = String(product.slug || '').toLowerCase();
-    return name.includes(normalizedHint) || normalizedHint.includes(name) || slug === normalizedHint;
-  }) || null;
+  return findProductContext(request.hint, products);
 }
