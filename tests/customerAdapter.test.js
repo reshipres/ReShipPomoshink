@@ -27,7 +27,8 @@ describe('new customer entry flow', () => {
       assert.match(result.answer, /впервые у нас/);
       assert.match(result.answer, /выбрать товар/);
       assert.match(result.answer, /доставк/);
-      assert.match(result.answer, /Если заказ уже оформлен/);
+      assert.match(result.answer, /Если заказ уже есть/);
+      assert.match(result.answer, /email/);
       assert.doesNotMatch(result.answer, /Напишите номер заказа/);
       assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
       assert.deepEqual(result.suggestedReplies, [
@@ -127,6 +128,13 @@ describe('system order lookup', () => {
     assert.equal(order.crmOrderNumber, '6_L');
   });
 
+  it('finds orders by email without guessing partial matches', () => {
+    assert.equal(findOrderContext('pickup@example.com', orders).crmOrderNumber, '8_N');
+    assert.equal(findOrderContext('почта pickup@example.com', orders).crmOrderNumber, '8_N');
+    assert.equal(findOrderContext('ivan@example.com', orders).lookupStatus, 'multiple');
+    assert.equal(findOrderContext('not-ivan@example.com', orders).lookupStatus, 'not_found');
+  });
+
   it('returns multiple for shared surname', () => {
     const order = findOrderContext('Иванов', orders);
 
@@ -169,6 +177,12 @@ describe('system order lookup', () => {
     const order = findLatestOrderContext({ telegramId: 'tg-petrova' }, orders);
 
     assert.equal(order.crmOrderNumber, '8_N');
+  });
+
+  it('finds latest known customer order by email', () => {
+    const order = findLatestOrderContext({ email: 'ivan@example.com' }, orders);
+
+    assert.equal(order.crmOrderNumber, '7_M');
   });
 });
 
@@ -231,6 +245,42 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(result.action, 'answer');
     assert.equal(result.systemLookup.status, 'found');
     assert.match(result.answer, /Нашел заказ #8_N/);
+  });
+
+  it('answers latest known customer order by known customer email', () => {
+    const result = handleCustomerMessage({
+      message: 'где заказ',
+      customer: { email: 'ivan@example.com' },
+      orders,
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'answer');
+    assert.equal(result.systemLookup.status, 'found');
+    assert.match(result.answer, /Нашел заказ #7_M/);
+    assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
+  });
+
+  it('uses customer-sent email as an order lookup identifier', () => {
+    const unique = handleCustomerMessage({
+      message: 'pickup@example.com',
+      orders,
+    });
+
+    assert.equal(unique.intent, 'order_status');
+    assert.equal(unique.action, 'answer');
+    assert.equal(unique.systemLookup.status, 'found');
+    assert.match(unique.answer, /Нашел заказ #8_N/);
+
+    const shared = handleCustomerMessage({
+      message: 'ivan@example.com',
+      orders,
+    });
+
+    assert.equal(shared.intent, 'order_status');
+    assert.equal(shared.action, 'ask_clarifying_question');
+    assert.equal(shared.systemLookup.status, 'multiple');
+    assert.match(shared.answer, /несколько похожих заказов/);
   });
 
   it('does not silently reuse latest known order when customer asks for another one', () => {

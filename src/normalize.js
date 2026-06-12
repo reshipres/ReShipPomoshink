@@ -20,6 +20,11 @@ export function hasEmail(message = '') {
   return /[\w.+-]+@[\w.-]+\.[a-z]{2,}/i.test(String(message));
 }
 
+export function extractEmail(message = '') {
+  const match = String(message || '').match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i);
+  return match?.[0]?.toLowerCase() || null;
+}
+
 export function hasUrl(message = '') {
   return /(?:https?:\/\/|www\.)\S+/i.test(String(message));
 }
@@ -60,6 +65,7 @@ export function looksLikeStandaloneOrderLookup(message = '') {
   const value = String(message).trim();
   if (!value) return false;
   if (extractOrderHint(value)) return true;
+  if (hasEmail(value)) return true;
 
   const text = normalizeText(value);
   if (/^\d{3,8}r$/i.test(text)) return true;

@@ -1,4 +1,4 @@
-import { extractOrderHint, normalizeDigits, normalizeText } from './normalize.js';
+import { extractEmail, extractOrderHint, normalizeDigits, normalizeText } from './normalize.js';
 
 export function findOrderContext(query, orders = []) {
   const value = String(query || '').trim();
@@ -26,8 +26,11 @@ function findExactIdentifierMatches(query, orders) {
   const hint = extractOrderHint(query) || query;
   const normalizedHint = normalizeIdentifier(hint);
   const digits = normalizeDigits(hint);
+  const email = extractEmail(query);
 
   return orders.filter((order) => {
+    if (email && orderEmails(order).includes(email)) return true;
+
     const identifiers = [
       order.orderNumber,
       order.crmOrderNumber,
@@ -53,14 +56,14 @@ function findCustomerOrders(customer, orders) {
   const customerId = normalizeIdentifier(customer.id || customer.customerId);
   const telegramId = normalizeIdentifier(customer.telegramId || customer.telegramUserId);
   const phoneDigits = normalizeDigits(customer.phone || customer.recipientPhone || '');
-  const email = normalizeIdentifier(customer.email);
+  const email = normalizeEmail(customer.email);
 
   if (!customerId && !telegramId && !phoneDigits && !email) return [];
 
   return orders.filter((order) => {
     if (customerId && normalizeIdentifier(order.customerId || order.userId) === customerId) return true;
     if (telegramId && normalizeIdentifier(order.customerTelegramId || order.telegramUserId) === telegramId) return true;
-    if (email && normalizeIdentifier(order.customerEmail || order.email) === email) return true;
+    if (email && orderEmails(order).includes(email)) return true;
 
     if (phoneDigits.length >= 7) {
       const recipientPhone = normalizeDigits(order.recipientPhone || '');
@@ -80,6 +83,20 @@ function compareLatestOrder(left, right) {
   const rightTime = orderTime(right);
 
   return rightTime - leftTime;
+}
+
+function orderEmails(order) {
+  return [
+    order.customerEmail,
+    order.recipientEmail,
+    order.email,
+  ]
+    .map(normalizeEmail)
+    .filter(Boolean);
+}
+
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
 }
 
 function orderTime(order) {
