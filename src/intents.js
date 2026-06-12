@@ -112,6 +112,14 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.DELIVERY_DATA, 0.96);
   }
 
+  if (messageLooksLikeSiteIssue(message)) {
+    return match(INTENTS.SITE_ISSUE, 0.96);
+  }
+
+  if (messageLooksLikeOrderPickupTimingQuestion(message)) {
+    return match(INTENTS.ORDER_STATUS, 0.9, { detail: 'delivery_timing' });
+  }
+
   if (messageLooksLikePickupQuestion(message)) {
     return match(INTENTS.PICKUP, 0.9);
   }
@@ -174,10 +182,6 @@ export function classifyMessage(message, session = {}) {
 
   if (messageLooksLikeWarrantyQuestion(message)) {
     return match(INTENTS.WARRANTY_OR_RETURN, 0.88);
-  }
-
-  if (messageLooksLikeSiteIssue(message)) {
-    return match(INTENTS.SITE_ISSUE, 0.96);
   }
 
   if (messageLooksLikeMoneyReturnIssue(message) || /(не проходит оплат|не могу оплат|не получается оплат|ошибка оплат|оплатил.*статус|статус.*не измен|деньги списал|списали.*деньги|деньги\s+снял[ио]?|снял[ио]\s+деньги|деньги\s+ушли|двойн(ая|ое).*оплат|плат[её]ж.*не вижу|чек.*не приш|деньги.*(не.*вернул|не.*пришл|не.*компенс|возвращ)|когда.*деньги|деньги.*назад)/i.test(message)) {
@@ -533,6 +537,17 @@ function messageLooksLikePickupQuestion(message) {
 
   const text = normalizeText(message);
   return /(самовывоз|самовывоза|самовывозом|забрать\s+самовывозом|пункт\s+самовывоза).{0,60}(есть|можно|адрес|где|куда|наход|работ|когда|во\s+сколько)?|(?:где|куда|адрес|можно).{0,40}самовывоз|гончарн.{0,40}(работ|открыт|можно|сегодня|завтра)|(?:работаете|работает|открыты|открыто).{0,40}(сегодня|завтра|еще|ещё)|(?:могу|можно).{0,30}(сегодня|завтра).{0,30}(подъехать|приехать|забрать)/i.test(text);
+}
+
+function messageLooksLikeOrderPickupTimingQuestion(message) {
+  const text = normalizeText(message);
+  if (!text || extractOrderHint(message)) return false;
+
+  const hasOrderCue = /(?:мой|моего|моем|мой\s+)?заказ|посылк/i.test(text);
+  const hasPickupCue = /самовывоз|забрать|выдач|получить|готов|доступен|доступна|доступно/i.test(text);
+  const hasTimingCue = /сегодня|завтра|когда|получается|уже|можно|будет|готов/i.test(text);
+
+  return hasOrderCue && hasPickupCue && hasTimingCue;
 }
 
 function messageLooksLikePrice(message) {

@@ -1215,6 +1215,19 @@ describe('customer-style order lookup conversations', () => {
       assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
     }
   });
+
+  it('treats order pickup readiness as an order lookup, not product availability', () => {
+    const result = handleCustomerMessage({
+      message: 'завтра получается заказ будет доступен к самовывозу?',
+      orders,
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.equal(result.contextRequest.type, 'order');
+    assert.match(result.answer, /номер заказа|трек CDEK|телефон|фамилию получателя/i);
+    assert.doesNotMatch(result.answer, /ссылку на товар|точное название модели|наличие/i);
+  });
 });
 
 describe('manual support routing', () => {
@@ -1243,6 +1256,7 @@ describe('manual support routing', () => {
       'не могу зайти в личный кабинет',
       'мне пришло несколько одинаковых писем',
       'письмо с подтверждением не пришло',
+      'в связи с тем что сайт не работает, вы о готовности заказа напишете в телеграм?',
       'И она почему то в корзину не добавляется.',
       'Ваш сайт почему то мои предыдущие покупки не показывает',
       'А, с десктопной версии не показывает почему-то',
