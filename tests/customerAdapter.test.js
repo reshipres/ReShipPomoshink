@@ -179,6 +179,12 @@ describe('system order lookup', () => {
     assert.equal(order.lookupStatus, 'multiple');
   });
 
+  it('finds orders by a standalone surname regardless of case', () => {
+    assert.equal(findOrderContext('Иванов', orders).lookupStatus, 'multiple');
+    assert.equal(findOrderContext('иванов', orders).lookupStatus, 'multiple');
+    assert.equal(findOrderContext('Петрова', orders).crmOrderNumber, '8_N');
+  });
+
   it('finds orders by labeled surname or recipient name', () => {
     assert.equal(findOrderContext('фамилия Иванов', orders).lookupStatus, 'multiple');
     assert.equal(findOrderContext('по фамилии Иванов Иван', orders).crmOrderNumber, '6_L');
@@ -771,6 +777,79 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(second.systemLookup.status, 'multiple');
     assert.match(second.answer, /несколько похожих заказов/);
     assert.match(second.answer, /последний/);
+  });
+
+  it('starts order lookup when customer sends only a surname', () => {
+    const shared = handleCustomerMessage({
+      message: 'Иванов',
+      orders,
+    });
+
+    const sharedLower = handleCustomerMessage({
+      message: 'иванов',
+      orders,
+    });
+
+    const unique = handleCustomerMessage({
+      message: 'Петрова',
+      orders,
+    });
+
+    const missing = handleCustomerMessage({
+      message: 'Смирнов',
+      orders,
+    });
+
+    assert.equal(shared.intent, 'order_status');
+    assert.equal(shared.action, 'ask_clarifying_question');
+    assert.equal(shared.systemLookup.status, 'multiple');
+    assert.match(shared.answer, /несколько похожих заказов/);
+    assert.equal(shared.nextSession.lastOrderCandidates.length, 2);
+
+    assert.equal(sharedLower.intent, 'order_status');
+    assert.equal(sharedLower.systemLookup.status, 'multiple');
+
+    assert.equal(unique.intent, 'order_status');
+    assert.equal(unique.action, 'answer');
+    assert.equal(unique.systemLookup.status, 'found');
+    assert.match(unique.answer, /Нашел заказ #8_N/);
+
+    assert.equal(missing.intent, 'order_status');
+    assert.equal(missing.action, 'ask_clarifying_question');
+    assert.equal(missing.systemLookup.status, 'not_found');
+    assert.match(missing.answer, /Не нашел заказ/);
+  });
+
+  it('keeps ambiguous surname candidates when customer selects latest and asks a follow-up', () => {
+    const first = handleCustomerMessage({
+      message: 'Иванов',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'последний',
+      session: first.nextSession,
+      orders,
+    });
+
+    const third = handleCustomerMessage({
+      message: 'а когда приедет?',
+      session: second.nextSession,
+      orders,
+    });
+
+    assert.equal(first.systemLookup.status, 'multiple');
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /Нашел заказ #7_M/);
+
+    assert.equal(third.intent, 'order_status');
+    assert.equal(third.action, 'answer');
+    assert.equal(third.systemLookup.status, 'found');
+    assert.match(third.answer, /По заказу #7_M/);
+    assert.doesNotMatch(third.answer, /Пришлите номер заказа/);
   });
 
   it('uses the latest order candidate when customer clarifies ambiguous surname with "last"', () => {

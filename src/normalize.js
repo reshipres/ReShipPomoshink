@@ -72,11 +72,20 @@ export function looksLikeStandaloneOrderLookup(message = '') {
   if (looksLikeLabeledNameLookup(text)) return true;
 
   const words = value.split(/\s+/).filter(Boolean);
+  if (words.length === 1 && looksLikeStandaloneSurname(words[0])) return true;
+
   const looksLikeFullName = words.length >= 2
     && words.length <= 4
     && words.every((word) => /^[А-ЯЁA-Z][а-яёa-z-]{2,}$/u.test(word));
 
   return looksLikeFullName;
+}
+
+function looksLikeStandaloneSurname(value) {
+  const word = String(value || '').trim();
+  if (!/^[А-ЯЁа-яё-]{4,}$/u.test(word)) return false;
+
+  return /(ов|ова|ев|ева|ёв|ёва|ин|ина|ын|ына|ский|ская|цкий|цкая|енко|ко|ян|янц)$/iu.test(word);
 }
 
 function looksLikeLabeledNameLookup(text) {
