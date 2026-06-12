@@ -788,6 +788,9 @@ describe('customer-style order lookup conversations', () => {
       'какие есть способы доставки?',
       'типы доставок',
       'как отправка делается?',
+      'отправляете по России?',
+      'можно в регион?',
+      'куда вы отправляете?',
     ]) {
       const result = handleCustomerMessage({
         message,
@@ -805,6 +808,43 @@ describe('customer-style order lookup conversations', () => {
       assert.doesNotMatch(result.answer, /Нашел заказ/);
       assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
     }
+  });
+
+  it('answers general payment and pickup questions without reusing the previous order', () => {
+    const first = handleCustomerMessage({
+      message: '6_L',
+      orders,
+    });
+
+    for (const message of ['рассрочка есть?', 'долями можно?', 'сплит есть?']) {
+      const result = handleCustomerMessage({
+        message,
+        session: first.nextSession,
+        orders,
+      });
+
+      assert.equal(result.intent, 'payment');
+      assert.equal(result.action, 'answer');
+      assert.equal(result.systemLookup, undefined);
+      assert.match(result.answer, /СБП/);
+      assert.match(result.answer, /рассрочка/);
+      assert.doesNotMatch(result.answer, /#6_L/);
+      assert.doesNotMatch(result.answer, /Не нашел заказ/);
+      assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
+    }
+
+    const pickup = handleCustomerMessage({
+      message: 'самовывоз есть?',
+      session: first.nextSession,
+      orders,
+    });
+
+    assert.equal(pickup.intent, 'pickup');
+    assert.equal(pickup.action, 'answer');
+    assert.equal(pickup.systemLookup, undefined);
+    assert.match(pickup.answer, /Гончарный проезд/);
+    assert.doesNotMatch(pickup.answer, /#6_L/);
+    assert.doesNotMatch(pickup.answer, /Нашел заказ/);
   });
 
   it('answers short timing and shipping follow-ups from the previously found order', () => {

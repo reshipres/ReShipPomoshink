@@ -90,6 +90,10 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.DELIVERY_DATA, 0.96);
   }
 
+  if (messageLooksLikePickupQuestion(message)) {
+    return match(INTENTS.PICKUP, 0.9);
+  }
+
   if (messageLooksLikeDeliveryPolicyQuestion(message)) {
     return match(INTENTS.DELIVERY_TERMS, 0.9);
   }
@@ -281,6 +285,7 @@ export function hasActionableRequest(message) {
   return messageLooksLikeOrder(message)
     || looksLikeStandaloneOrderLookup(message)
     || looksLikeDeliveryDataPayload(message)
+    || messageLooksLikePickupQuestion(message)
     || messageLooksLikeAvailability(message)
     || messageLooksLikePrice(message)
     || messageLooksLikeProductAdvice(message)
@@ -325,7 +330,7 @@ function messageLooksLikeProductLinkFollowup(message) {
 
 function messageLooksLikeDeliveryTerms(message) {
   if (extractOrderHint(message)) return false;
-  return /(сколько.*(достав|ид[её]т|ехать|ждать|времени|дней)|через сколько|в течени[еи] какого|как долго|долго.*ждать|срок.*(достав|отправ|предзаказ|ожидан)|сроки|будет идти|доставка.*сколько|стоим.*достав|цена.*достав|тариф.*сдэк|доставк[аи].*(москв|росси|регион|город|курьер|пвз)|(?:способ|способы|тип|типы|вариант|варианты).{0,40}достав|доставк[аи].{0,40}(способ|способы|тип|типы|вариант|варианты)|как.{0,40}(доставк|отправк|отправляете|отправить)|(?:чем|как).{0,30}(отправляете|доставляете)|курьер.{0,30}пвз|пвз.{0,30}курьер)/i.test(message)
+  return /(сколько.*(достав|ид[её]т|ехать|ждать|времени|дней)|через сколько|в течени[еи] какого|как долго|долго.*ждать|срок.*(достав|отправ|предзаказ|ожидан)|сроки|будет идти|доставка.*сколько|стоим.*достав|цена.*достав|тариф.*сдэк|доставк[аи].*(москв|росси|регион|город|курьер|пвз)|(?:способ|способы|тип|типы|вариант|варианты).{0,40}достав|доставк[аи].{0,40}(способ|способы|тип|типы|вариант|варианты)|как.{0,40}(доставк|отправк|отправляете|отправить)|(?:чем|как|куда|где).{0,40}(отправляете|доставляете)|(?:отправляете|доставляете).{0,40}(росси|регион|город)|(?:можно|доставк[аи]|отправк[аи]).{0,40}(регион|росси)|курьер.{0,30}пвз|пвз.{0,30}курьер)/i.test(message)
     && !/(мой|моего|моем|(^|\s)заказ($|\s)|трек|статус)/i.test(message);
 }
 
@@ -339,8 +344,17 @@ function messageLooksLikeDeliveryPolicyQuestion(message) {
     || /(?:способ|способы|тип|типы|вариант|варианты).{0,40}достав/i.test(text)
     || /доставк[аи].{0,40}(?:способ|способы|тип|типы|вариант|варианты)/i.test(text)
     || /как.{0,40}(?:доставк|отправк|отправляете|отправить)/i.test(text)
-    || /(?:чем|как).{0,30}(?:отправляете|доставляете)/i.test(text)
+    || /(?:чем|как|куда|где).{0,40}(?:отправляете|доставляете)/i.test(text)
+    || /(?:отправляете|доставляете).{0,40}(?:росси|регион|город)/i.test(text)
+    || /(?:можно|доставк[аи]|отправк[аи]).{0,40}(?:регион|росси)/i.test(text)
     || /курьер.{0,30}пвз|пвз.{0,30}курьер/i.test(text);
+}
+
+function messageLooksLikePickupQuestion(message) {
+  if (extractOrderHint(message) || messageMentionsOrderContext(message)) return false;
+
+  const text = normalizeText(message);
+  return /(самовывоз|самовывоза|самовывозом|забрать\s+самовывозом|пункт\s+самовывоза).{0,60}(есть|можно|адрес|где|куда|наход|работ|когда|во\s+сколько)?|(?:где|куда|адрес|можно).{0,40}самовывоз/i.test(text);
 }
 
 function messageLooksLikePrice(message) {
@@ -437,7 +451,7 @@ function messageLooksLikePaymentMethodQuestion(message) {
     return false;
   }
 
-  return /(как.*оплат|чем.*оплат|можно.*оплат|оплатить.*(карт|сбп|сайт)|сбп|карта|картой|номер карты|перевод|налож|чек|квитанц)/i.test(message);
+  return /(как.*оплат|чем.*оплат|можно.*оплат|оплатить.*(карт|сбп|сайт)|сбп|карта|картой|номер карты|перевод|налож|наложк|при\s+получени|постоплат|рассрочк|долями|сплит|частями|чек|квитанц)/i.test(message);
 }
 
 function messageLooksLikeMissingOrderIdentifier(message) {
