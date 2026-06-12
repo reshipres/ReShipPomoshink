@@ -177,6 +177,8 @@ function extractShortCrmHint(message) {
   if (!match) return null;
 
   const [, , number, suffix] = match;
+  if (isShortCrmStopSuffix(suffix)) return null;
+
   const matchedText = `${number} ${suffix}`;
   const fullText = normalized.replace(/\s+/g, '');
   const shortText = normalizeText(matchedText).replace(/\s+/g, '');
@@ -190,6 +192,27 @@ function extractShortCrmHint(message) {
   if (!hasOrderCue && !safeStandaloneSuffix) return null;
 
   return `${number}_${suffix.toUpperCase()}`;
+}
+
+function isShortCrmStopSuffix(value) {
+  return new Set([
+    'без',
+    'где',
+    'год',
+    'два',
+    'дня',
+    'для',
+    'еще',
+    'ещё',
+    'или',
+    'как',
+    'раз',
+    'руб',
+    'три',
+    'уже',
+    'что',
+    'шт',
+  ]).has(normalizeText(value));
 }
 
 function messageHasOrderCue(value) {
