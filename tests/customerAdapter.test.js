@@ -1112,6 +1112,8 @@ describe('manual support routing', () => {
       'не могу зайти в личный кабинет',
       'мне пришло несколько одинаковых писем',
       'письмо с подтверждением не пришло',
+      'И она почему то в корзину не добавляется.',
+      'Ваш сайт почему то мои предыдущие покупки не показывает',
     ]) {
       const result = handleCustomerMessage({ message });
 
@@ -1168,14 +1170,17 @@ describe('manual support routing', () => {
   });
 
   it('recognizes accusative price wording as a price question', () => {
-    const result = handleCustomerMessage({
-      message: 'можете сказать предварительную цену черной версии?',
-    });
+    for (const message of [
+      'можете сказать предварительную цену черной версии?',
+      'можно ли узнать вообще хоть примерные ценники? Например интересует Pulsar tenz красная',
+    ]) {
+      const result = handleCustomerMessage({ message });
 
-    assert.equal(result.intent, 'price_discount');
-    assert.equal(result.action, 'ask_clarifying_question');
-    assert.match(result.answer, /цену|цена/i);
-    assert.doesNotMatch(result.answer, /Напишите вопрос одним сообщением/);
+      assert.equal(result.intent, 'price_discount', message);
+      assert.equal(result.action, 'ask_clarifying_question', message);
+      assert.match(result.answer, /цену|цена|товар/i, message);
+      assert.doesNotMatch(result.answer, /Напишите вопрос одним сообщением/, message);
+    }
   });
 });
 
@@ -1595,14 +1600,28 @@ describe('customer-style product lookup conversations', () => {
       'это control или speed?',
       'подскажите по скорости стеклопада',
       'какие грипы подходят?',
+      'И кстати на счёт Wlmouse как она в руке вообще приятные ощущения этого дизайна?',
     ]) {
       const result = handleCustomerMessage({ message });
 
       assert.equal(result.intent, 'product_advice', message);
       assert.equal(result.action, 'ask_clarifying_question', message);
-      assert.match(result.answer, /speed\/control|грип|совместимость|модель/i, message);
+      assert.match(result.answer, /speed\/control|грип|совместимость|модель|несколько похожих товаров/i, message);
       assert.doesNotMatch(result.answer, /Я могу помочь с выбором товара, наличием/, message);
     }
+  });
+
+  it('does not drop long product reference lists into generic fallback', () => {
+    const result = handleCustomerMessage({
+      message: 'WLMOUSE Beast X Max Magnesium Gaming Mouse YING75 HE Forged Carbon Fiber Keyboard',
+      products,
+    });
+
+    assert.equal(result.intent, 'availability');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.notEqual(result.intent, 'other');
+    assert.match(result.answer, /товар|модель|ссылку|не нашел/i);
+    assert.doesNotMatch(result.answer, /Я могу помочь с выбором товара, наличием/);
   });
 
   it('answers alternative follow-ups for the previously found product without repeating availability', () => {

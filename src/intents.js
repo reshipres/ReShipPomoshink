@@ -174,7 +174,9 @@ export function classifyMessage(message, session = {}) {
         ? INTENTS.PRODUCT_SEARCH
         : pendingRequest.intent === INTENTS.ORDER_HELP
           ? INTENTS.ORDER_HELP
-          : INTENTS.AVAILABILITY;
+          : pendingRequest.intent === INTENTS.PRODUCT_ADVICE
+            ? INTENTS.PRODUCT_ADVICE
+            : INTENTS.AVAILABILITY;
     return match(intent, 0.9, { hint: extractProductSlug(message) || message.trim() });
   }
 
@@ -230,7 +232,10 @@ export function classifyMessage(message, session = {}) {
       productDetail: extractProductAvailabilityDetail(message),
     });
   }
-  if (messageLooksLikeProductAdvice(message)) return match(INTENTS.PRODUCT_ADVICE, 0.76);
+  if (messageLooksLikeProductAdvice(message)) {
+    const hint = extractProductHint(message);
+    return match(INTENTS.PRODUCT_ADVICE, 0.76, hint ? { hint } : {});
+  }
   if (looksLikeShortProductReference(message)) return match(INTENTS.AVAILABILITY, 0.72, { hint: extractProductHint(message) });
   if (messageLooksLikeOrder(message)) return match(INTENTS.ORDER_STATUS, 0.9, { hint: extractOrderHint(message) });
 
@@ -444,7 +449,7 @@ function messageLooksLikePickupQuestion(message) {
 }
 
 function messageLooksLikePrice(message) {
-  return /(цен[ауы]|прайс|стоим|стоить|стоят|сколько.{0,80}(стоит|стоят|стоить|цен[ауы])|сколько будет|будет стоить|скидк|промокод|акци[яи]|дешевле|дешев|снизить|скинуть|торг|актуальная цена|предварительная цена|предварительную цену)/i.test(message);
+  return /(цен[ауы]|ценник|ценники|прайс|стоим|стоить|стоят|сколько.{0,80}(стоит|стоят|стоить|цен[ауы]|ценник)|сколько будет|будет стоить|скидк|промокод|акци[яи]|дешевле|дешев|снизить|скинуть|торг|актуальная цена|предварительная цена|предварительную цену|примерн.{0,30}цен)/i.test(message);
 }
 
 function extractPriceDetail(message) {
@@ -456,7 +461,7 @@ function extractPriceDetail(message) {
 }
 
 function messageLooksLikeProductAdvice(message) {
-  return (messageLooksLikeProductAlternativeQuestion(message) || messageLooksLikeCatalogBrowsingQuestion(message) || /(посовету|подскаж.*какой|что лучше|подойдет|подойд[её]т|совместим|размер|soft|xsoft|mid|speed|control|контрол|скорост|быстр(ее|ый|ая|ое)|медленн|скольж|стеклопад|грип|грипы|grip|свитч|switch|глайды|ковр|мышк|мышь|мыши|клавиатур|отличи[ея]|отличаются|чем отличаются|надежн|надёжн|актуальн|есть смысл.{0,40}брать|для.{0,30}хват|пальцев(ый|ого)\s+хват|оригинал|копия)/i.test(message))
+  return (messageLooksLikeProductAlternativeQuestion(message) || messageLooksLikeCatalogBrowsingQuestion(message) || /(посовету|подскаж.*какой|что лучше|подойдет|подойд[её]т|совместим|размер|soft|xsoft|mid|speed|control|контрол|скорост|быстр(ее|ый|ая|ое)|медленн|скольж|стеклопад|грип|грипы|grip|свитч|switch|глайды|ковр|мышк|мышь|мыши|клавиатур|ощущени|дизайн|как.{0,40}в\s+руке|в\s+руке.{0,40}(лежит|ощущ|приятн)|отличи[ея]|отличаются|чем отличаются|надежн|надёжн|актуальн|есть смысл.{0,40}брать|для.{0,30}хват|пальцев(ый|ого)\s+хват|оригинал|копия)/i.test(message))
     && !messageLooksLikeAvailability(message)
     && !messageLooksLikePrice(message);
 }
@@ -529,7 +534,7 @@ function messageLooksLikeNewcomerEntry(message) {
 }
 
 function messageLooksLikeSiteIssue(message) {
-  return /(сайт|корзин|оформлен|оформить|оформля|ордер|личн(ый|ом).*кабинет|акк|аккаунт|промокод|кнопк|платформ).*(не работает|лежит|недоступ|ошибк|баг|не могу|не получается|не дает|не даёт|не открывается|не отображ|не видно|трабл|проблем)|(?:все\s+равно|опять|снова|до\s+сих\s+пор|по-прежнему)?.{0,30}(выдает|выдаёт|пишет|показывает).{0,30}ошибк|ошибка.{0,40}(выдает|выдаёт|пишет|показывает|вылезает|появляется)|не могу.*(оформить|заказать|сделать\s+ордер|положить.*корзин|зайти.*(личн|кабинет|акк|аккаунт)|войти.*(личн|кабинет|акк|аккаунт))|(?:зайти|войти).{0,40}(личн|кабинет|акк|аккаунт).{0,40}не могу|ошибка.*(сайт|корзин|оформ|оплат|личн|кабинет|акк|аккаунт)|проблем[аы].{0,40}(с\s+)?(сайт|корзин|оформ|личн|кабинет|акк|аккаунт)|какой.?то\s+баг\s+(сайта|платформ)|(?:письм|уведомлен|подтвержден).{0,60}(?:не\s+приш|не\s+приход|не\s+получ|одинаков|дубл|несколько|много)|(?:несколько|много|одинаков|дубл).{0,60}(?:писем|письм|уведомлен)/i.test(message);
+  return /(сайт|корзин|оформлен|оформить|оформля|ордер|личн(ый|ом).*кабинет|акк|аккаунт|промокод|кнопк|платформ|покупк).*(не работает|лежит|недоступ|ошибк|баг|не могу|не получается|не дает|не даёт|не открывается|не отображ|не видно|не добавляется|не показывает|трабл|проблем)|(?:все\s+равно|опять|снова|до\s+сих\s+пор|по-прежнему)?.{0,30}(выдает|выдаёт|пишет|показывает).{0,30}ошибк|ошибка.{0,40}(выдает|выдаёт|пишет|показывает|вылезает|появляется)|не могу.*(оформить|заказать|сделать\s+ордер|положить.*корзин|зайти.*(личн|кабинет|акк|аккаунт)|войти.*(личн|кабинет|акк|аккаунт))|(?:зайти|войти).{0,40}(личн|кабинет|акк|аккаунт).{0,40}не могу|ошибка.*(сайт|корзин|оформ|оплат|личн|кабинет|акк|аккаунт)|проблем[аы].{0,40}(с\s+)?(сайт|корзин|оформ|личн|кабинет|акк|аккаунт)|какой.?то\s+баг\s+(сайта|платформ)|(?:письм|уведомлен|подтвержден).{0,60}(?:не\s+приш|не\s+приход|не\s+получ|одинаков|дубл|несколько|много)|(?:несколько|много|одинаков|дубл).{0,60}(?:писем|письм|уведомлен)/i.test(message);
 }
 
 function messageLooksLikeDeliveryTrackingQuestion(message) {
@@ -600,7 +605,7 @@ function looksLikeShortProductReference(message) {
   if (hasUrl(message)) return false;
 
   const words = text.split(/\s+/).filter(Boolean);
-  return words.length >= 1 && words.length <= 7;
+  return words.length >= 1 && words.length <= 14;
 }
 
 function extractProductHint(message) {

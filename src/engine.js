@@ -305,6 +305,9 @@ function routeDecision(classified, message, context) {
 
     case INTENTS.PRODUCT_ADVICE:
       if (productContext) {
+        const lookupDecision = composeProductLookupDecision(productContext, 'product_advice', classified.confidence);
+        if (lookupDecision) return lookupDecision;
+
         return answer('product_advice', composeProductAdviceAnswer(productContext), [
           'Сколько стоит?',
           'Как оформить?',
@@ -316,7 +319,9 @@ function routeDecision(classified, message, context) {
         'Проверить наличие',
         'Сколько доставка?',
         'Позови оператора',
-      ], classified.confidence, { type: 'product_advice', strategy: 'ask_for_preferences' });
+      ], classified.confidence, classified.hint
+        ? { type: 'product', strategy: 'by_hint', hint: classified.hint }
+        : { type: 'product_advice', strategy: 'ask_for_preferences' });
 
     case INTENTS.ORDER_HELP:
       if (productContext) {
@@ -455,7 +460,11 @@ function composeProductLookupDecision(productContext, intent, confidence) {
   }
 
   if (lookupStatus === 'multiple' || lookupStatus === 'ambiguous') {
-    return ask(intent, 'Нашел несколько похожих товаров. Чтобы не перепутать наличие и цену, пришлите точную модель, цвет или ссылку на карточку.', [
+    const text = intent === 'product_advice'
+      ? 'Нашел несколько похожих товаров. Чтобы нормально подсказать по выбору, хвату, ощущениям или совместимости, пришлите точную модель, цвет или ссылку на карточку.'
+      : 'Нашел несколько похожих товаров. Чтобы не перепутать наличие и цену, пришлите точную модель, цвет или ссылку на карточку.';
+
+    return ask(intent, text, [
       'Позови оператора',
       'Проверить другой товар',
     ], confidence, { type: 'product', strategy: 'ask_for_exact_hint' });
