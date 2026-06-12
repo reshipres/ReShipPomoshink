@@ -158,6 +158,7 @@ async function maybeWriteLearningEvent({
   }
 
   const shouldWrite = learning.logAll === true
+    || analyticsEvent.needsReview === true
     || shouldLogForLearning(deterministicResult, {
       lowConfidenceThreshold: learning.lowConfidenceThreshold ?? 0.74,
     })

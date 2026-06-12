@@ -101,6 +101,33 @@ describe('learning inbox report', () => {
     assert.equal(report.llmTransitions[0].examples[0], 'как отправка идет');
   });
 
+  it('treats confident shadow LLM transitions as review candidates', () => {
+    const report = buildLearningReport([
+      learningEvent({
+        redactedMessage: 'доставка',
+        deterministicIntent: 'delivery_terms',
+        finalIntent: 'delivery_terms',
+        confidence: 0.9,
+        deterministicAction: 'answer',
+        finalAction: 'answer',
+        outcome: 'answered',
+        needsReview: false,
+        llmDecision: {
+          intent: 'delivery_terms',
+          action: 'ask_clarifying_question',
+          confidence: 0.86,
+          needsHandoff: false,
+          handoffReason: null,
+          usedFacts: ['delivery_policy'],
+        },
+      }),
+    ]);
+
+    assert.equal(report.totals.reviewCandidates, 1);
+    assert.equal(report.ruleBacklog[0].reason, 'llm_transition');
+    assert.match(report.ruleBacklog[0].suggestedNextStep, /deterministic rule/);
+  });
+
   it('reads multiple inbox files and ignores missing inbox directory', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'reship-learning-report-'));
 
@@ -137,10 +164,12 @@ function learningEvent({
   deterministicIntent,
   finalIntent,
   confidence = 0.7,
+  deterministicAction = 'ask_clarifying_question',
   finalAction = 'ask_clarifying_question',
   outcome = 'needs_clarification',
   handoffReason = 'none',
   llmDecision = null,
+  needsReview = deterministicIntent === 'other' || confidence < 0.74,
 } = {}) {
   return {
     timestamp: '2026-06-12T00:00:00.000Z',
@@ -148,7 +177,7 @@ function learningEvent({
     redactedMessage,
     deterministic: {
       intent: deterministicIntent,
-      action: 'ask_clarifying_question',
+      action: deterministicAction,
       confidence,
       needsHandoff: false,
       handoffReason: 'none',
@@ -178,7 +207,7 @@ function learningEvent({
         decision: null,
       },
     usedFactIds: ['support_scope'],
-    needsReview: deterministicIntent === 'other' || confidence < 0.74,
+    needsReview,
     outcome,
   };
 }

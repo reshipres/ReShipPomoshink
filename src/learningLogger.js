@@ -21,7 +21,9 @@ export function buildAnalyticsEvent({
     final: summarizeResult(result),
     llmFallback: summarizeLlmFallback(llmFallback),
     usedFactIds: facts.map((fact) => fact.id).filter(Boolean),
-    needsReview: shouldLogForLearning(deterministic) || shouldLogForLearning(result),
+    needsReview: shouldLogForLearning(deterministic)
+      || shouldLogForLearning(result)
+      || hasLlmTransition(deterministic, llmFallback),
     outcome: classifyOutcome(result),
   };
 }
@@ -103,6 +105,15 @@ function summarizeLlmFallback(llmFallback) {
       }
       : null,
   };
+}
+
+function hasLlmTransition(deterministic = {}, llmFallback = {}) {
+  const decision = llmFallback?.decision;
+  if (llmFallback?.status !== 'ok' || !decision) return false;
+
+  return (decision.intent || 'unknown') !== (deterministic.intent || 'unknown')
+    || (decision.action || 'unknown') !== (deterministic.action || 'unknown')
+    || Boolean(decision.needsHandoff) !== Boolean(deterministic.needsHandoff);
 }
 
 function classifyOutcome(result = {}) {

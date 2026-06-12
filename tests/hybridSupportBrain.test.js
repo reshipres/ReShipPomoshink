@@ -166,6 +166,49 @@ describe('hybrid support brain', () => {
     }
   });
 
+  it('writes shadow LLM transitions to learning even for confident deterministic answers', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'reship-shadow-learning-'));
+
+    try {
+      const result = await handleHybridCustomerMessage({
+        message: 'доставка',
+        source: 'test',
+        llm: {
+          lowConfidenceThreshold: 0.95,
+          client: async () => ({
+            intent: 'delivery_terms',
+            action: 'ask_clarifying_question',
+            answer: 'Уточните город доставки, чтобы рассчитать срок и стоимость.',
+            needsHandoff: false,
+            handoffReason: null,
+            usedFacts: ['delivery_policy', 'no_invention_policy'],
+            confidence: 0.86,
+            reason: 'safe shadow transition candidate',
+          }),
+        },
+        learning: {
+          enabled: true,
+          dir,
+          date: '2026-06-12',
+        },
+      });
+      const raw = await readFile(join(dir, '2026-06-12.jsonl'), 'utf8');
+      const event = JSON.parse(raw.trim());
+
+      assert.equal(result.intent, 'delivery_terms');
+      assert.equal(result.action, 'answer');
+      assert.equal(result.hybridMode, 'shadow');
+      assert.equal(result.llmFallback.status, 'ok');
+      assert.equal(result.learningLog.status, 'written');
+      assert.equal(event.needsReview, true);
+      assert.equal(event.deterministic.intent, 'delivery_terms');
+      assert.equal(event.final.intent, 'delivery_terms');
+      assert.equal(event.llmFallback.decision.action, 'ask_clarifying_question');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('uses LLM fallback only for uncertain deterministic results', () => {
     assert.equal(shouldUseLlmFallback({ intent: 'delivery_terms', confidence: 0.9 }), false);
     assert.equal(shouldUseLlmFallback({ intent: 'other', confidence: 0.45 }), true);

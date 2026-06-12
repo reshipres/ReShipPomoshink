@@ -165,7 +165,8 @@ function isReviewCandidate(event, { lowConfidenceThreshold }) {
     || Number(deterministic.confidence || 0) < lowConfidenceThreshold
     || Number(final.confidence || 0) < lowConfidenceThreshold
     || event.outcome === 'handoff'
-    || final.handoffReason === 'llm_handoff';
+    || final.handoffReason === 'llm_handoff'
+    || hasLlmTransition(event);
 }
 
 function summarizeTopMessages(events, { topLimit, lowConfidenceThreshold }) {
@@ -293,6 +294,7 @@ function reviewReason(event, { lowConfidenceThreshold }) {
   const final = event.final || {};
 
   if (final.handoffReason === 'llm_handoff') return 'llm_handoff';
+  if (hasLlmTransition(event)) return 'llm_transition';
   if (deterministic.intent === 'other' || final.intent === 'other') return 'other';
   if (event.outcome === 'handoff') return `handoff:${final.handoffReason || 'none'}`;
   if (Number(deterministic.confidence || 0) < lowConfidenceThreshold) return 'low_deterministic_confidence';
@@ -314,11 +316,24 @@ function suggestedNextStep(reason, event) {
     return 'inspect why LLM requested handoff and decide whether deterministic layer should route it directly';
   }
 
+  if (reason === 'llm_transition') {
+    return 'review safe LLM transition and promote repeated pattern into a deterministic rule with fixtures';
+  }
+
   if (reason.includes('confidence')) {
     return `strengthen the existing ${event.final?.intent || event.deterministic?.intent || 'intent'} rule or add clarifying fixture`;
   }
 
   return 'inspect examples and decide whether this is a new fixture, a support fact, or an operator-only case';
+}
+
+function hasLlmTransition(event = {}) {
+  const decision = event.llmFallback?.decision;
+  if (event.llmFallback?.status !== 'ok' || !decision) return false;
+
+  return (decision.intent || 'unknown') !== (event.deterministic?.intent || 'unknown')
+    || (decision.action || 'unknown') !== (event.deterministic?.action || 'unknown')
+    || Boolean(decision.needsHandoff) !== Boolean(event.deterministic?.needsHandoff);
 }
 
 function normalizeRedactedMessage(value) {
