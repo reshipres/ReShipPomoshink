@@ -24,18 +24,31 @@ const PRODUCT_QUERY_STOPWORDS = new Set([
   'купить',
   'куплю',
   'ли',
+  'глянь',
+  'модель',
+  'можешь',
   'можно',
+  'мышка',
+  'мышку',
+  'мышь',
   'на',
   'наличии',
   'наличие',
+  'название',
   'оформить',
   'оформлю',
   'она',
   'оно',
   'ощущения',
+  'погляди',
   'по',
   'приятные',
   'подскажите',
+  'посмотрел',
+  'посмотреть',
+  'посмотри',
+  'проверишь',
+  'проверь',
   'проверить',
   'руке',
   'счет',
@@ -62,11 +75,11 @@ export function findProductContext(query, products = []) {
 
   const exactMatches = findExactProductMatches(value, products);
   if (exactMatches.length === 1) return exactMatches[0];
-  if (exactMatches.length > 1) return { lookupStatus: 'multiple' };
+  if (exactMatches.length > 1) return multipleProductContext(exactMatches);
 
   const fuzzyMatches = findFuzzyProductMatches(value, products);
   if (fuzzyMatches.length === 1) return fuzzyMatches[0];
-  if (fuzzyMatches.length > 1) return { lookupStatus: 'multiple' };
+  if (fuzzyMatches.length > 1) return multipleProductContext(fuzzyMatches);
 
   return { lookupStatus: 'not_found' };
 }
@@ -118,6 +131,13 @@ function productQueryTokens(value) {
 
 function normalizeSlug(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function multipleProductContext(candidates) {
+  return {
+    lookupStatus: 'multiple',
+    candidates: candidates.slice(0, 5),
+  };
 }
 
 function canonicalProductToken(token) {

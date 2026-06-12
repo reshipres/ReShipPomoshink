@@ -167,7 +167,7 @@ function routeDecision(classified, message, context) {
       ], classified.confidence);
 
     case INTENTS.ORDER_SWITCH:
-      return ask('order_status', 'Если нужен другой заказ, пришлите номер заказа, трек CDEK, телефон или фамилию получателя.', [
+      return ask('order_status', 'Если нужен другой заказ, пришлите номер заказа, трек CDEK, телефон или полное ФИО получателя.', [
         'Проверь последний заказ',
         'Позови оператора',
       ], classified.confidence, { type: 'order', strategy: 'ask_for_hint' });
@@ -201,15 +201,15 @@ function routeDecision(classified, message, context) {
       }
 
       if (classified.missingIdentifier) {
-        return ask('order_status', 'Номер заказа не обязателен. Могу проверить по телефону, фамилии/ФИО получателя или треку CDEK. Если этих данных нет под рукой, передам оператору.', [
+        return ask('order_status', 'Номер заказа не обязателен. Могу проверить по телефону, полному ФИО получателя или треку CDEK. Если этих данных нет под рукой, передам оператору.', [
           'Позови оператора',
           'Проверить по телефону',
         ], classified.confidence, { type: 'order', strategy: 'ask_for_hint' });
       }
 
       return ask('order_status', classified.hint
-        ? 'Проверю заказ по этим данным. Если не найду точное совпадение, попрошу уточнить номер заказа, трек CDEK, телефон или фамилию получателя.'
-        : 'Проверю заказ. Пришлите номер заказа, трек CDEK, телефон или фамилию получателя.', [
+        ? 'Проверю заказ по этим данным. Если не найду точное совпадение, попрошу уточнить номер заказа, трек CDEK, телефон или полное ФИО получателя.'
+        : 'Проверю заказ. Пришлите номер заказа, трек CDEK, телефон или полное ФИО получателя.', [
         'Проверь последний заказ',
         'Позови оператора',
       ], classified.confidence, {
@@ -412,7 +412,7 @@ function composeOrderLookupDecision(orderContext, classified, message) {
   const lookupStatus = orderContext.lookupStatus || orderContext.resultStatus || null;
 
   if (lookupStatus === 'not_found') {
-    return ask('order_status', 'Не нашел заказ по этим данным. Пришлите номер заказа, трек CDEK, телефон или фамилию получателя. Если данных нет под рукой, передам оператору.', [
+    return ask('order_status', 'Не нашел заказ по этим данным. Пришлите номер заказа, трек CDEK, телефон или полное ФИО получателя. Если данных нет под рукой, передам оператору.', [
       'Позови оператора',
       'Проверить другой заказ',
     ], classified.confidence, { type: 'order', strategy: 'ask_for_hint' });
@@ -476,9 +476,10 @@ function composeProductLookupDecision(productContext, intent, confidence) {
   }
 
   if (lookupStatus === 'multiple' || lookupStatus === 'ambiguous') {
+    const candidates = formatProductCandidates(productContext.candidates);
     const text = intent === 'product_advice'
-      ? 'Нашел несколько похожих товаров. Чтобы нормально подсказать по выбору, хвату, ощущениям или совместимости, пришлите точную модель, цвет или ссылку на карточку.'
-      : 'Нашел несколько похожих товаров. Чтобы не перепутать наличие и цену, пришлите точную модель, цвет или ссылку на карточку.';
+      ? `Нашел несколько похожих товаров.${candidates} Чтобы нормально подсказать по выбору, хвату, ощущениям или совместимости, пришлите точную модель, цвет или ссылку на карточку.`
+      : `Нашел несколько похожих товаров.${candidates} Чтобы не перепутать наличие и цену, пришлите точную модель, цвет или ссылку на карточку.`;
 
     return ask(intent, text, [
       'Позови оператора',
@@ -487,6 +488,28 @@ function composeProductLookupDecision(productContext, intent, confidence) {
   }
 
   return null;
+}
+
+function formatProductCandidates(candidates = []) {
+  if (!Array.isArray(candidates) || !candidates.length) return ' ';
+
+  const lines = candidates
+    .slice(0, 4)
+    .map((product) => {
+      const price = Number.isFinite(Number(product.price)) ? ` — ${formatRub(product.price)}` : '';
+      const stock = Number(product.quantity) > 0 ? ' в наличии' : '';
+      return `${product.name || product.slug || 'товар'}${price}${stock}`;
+    });
+
+  return ` Варианты: ${lines.join('; ')}.`;
+}
+
+function formatRub(value) {
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function composeProductRestockTimingDecision(product, confidence) {

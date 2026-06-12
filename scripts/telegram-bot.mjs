@@ -6,6 +6,7 @@ import {
   handleHybridCustomerMessage,
   redactLearningText,
 } from '../src/index.js';
+import { createLiveDataClient } from '../src/liveData.js';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
@@ -19,6 +20,7 @@ const orders = await loadJsonArray(process.env.RESHIP_ORDERS_JSON);
 const products = await loadJsonArray(process.env.RESHIP_PRODUCTS_JSON);
 const operatorChatId = process.env.OPERATOR_CHAT_ID || null;
 const llmConfig = buildLlmConfig();
+const liveData = createLiveDataClient();
 
 bot.command(['start', 'help'], async (ctx) => {
   await replyWithBrain(ctx, '/start');
@@ -38,6 +40,8 @@ bot.catch((error) => {
 
 console.log('ReShipPomoshink Telegram bot started.');
 console.log(`Orders source: ${orders.length ? `${orders.length} records` : 'empty'}. Products source: ${products.length ? `${products.length} records` : 'empty'}.`);
+const liveSources = liveData.describe();
+console.log(`Live products source: ${liveSources.products}. Live orders source: ${liveSources.orders}.`);
 console.log(`LLM provider: ${llmConfig.provider}, model: ${llmConfig.model}, shadow: ${envBool('LLM_SHADOW', true) ? 'on' : 'off'}.`);
 await bot.start({
   onStart: (info) => {
@@ -49,13 +53,16 @@ async function replyWithBrain(ctx, message) {
   const chatId = String(ctx.chat.id);
   const session = sessions.get(chatId) || {};
   const customer = buildTelegramCustomer(ctx);
+  const liveContext = await liveData.resolveContext({ message, session, customer });
+  const runtimeOrders = mergeByLookupKey(orders, liveContext.orders, orderLookupKey);
+  const runtimeProducts = mergeByLookupKey(products, liveContext.products, productLookupKey);
 
   const result = await handleHybridCustomerMessage({
     message,
     session,
     customer,
-    orders,
-    products,
+    orders: runtimeOrders,
+    products: runtimeProducts,
     source: 'telegram',
     llm: {
       shadow: envBool('LLM_SHADOW', true),
@@ -82,6 +89,28 @@ async function replyWithBrain(ctx, message) {
   if (result.needsHandoff && operatorChatId) {
     await notifyOperator(ctx, result, message);
   }
+}
+
+function mergeByLookupKey(base = [], extra = [], keyFn) {
+  const merged = [];
+  const seen = new Set();
+
+  for (const item of [...extra, ...base]) {
+    const key = keyFn(item);
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    merged.push(item);
+  }
+
+  return merged;
+}
+
+function orderLookupKey(order = {}) {
+  return order.orderId || order.crmOrderNumber || order.orderNumber || order.cdekTrackingNumber || null;
+}
+
+function productLookupKey(product = {}) {
+  return product.id || product.slug || product.name || null;
 }
 
 function buildLlmConfig() {

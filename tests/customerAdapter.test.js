@@ -624,7 +624,7 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(second.systemLookup, undefined);
     assert.equal(second.contextRequest.strategy, 'ask_for_hint');
     assert.match(second.answer, /Номер заказа не обязателен/);
-    assert.match(second.answer, /телефону, фамилии/);
+    assert.match(second.answer, /телефону, полному ФИО/);
     assert.doesNotMatch(second.answer, /Не нашел заказ/);
   });
 
@@ -1225,7 +1225,7 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(result.intent, 'order_status');
     assert.equal(result.action, 'ask_clarifying_question');
     assert.equal(result.contextRequest.type, 'order');
-    assert.match(result.answer, /номер заказа|трек CDEK|телефон|фамилию получателя/i);
+    assert.match(result.answer, /номер заказа|трек CDEK|телефон|полное ФИО получателя/i);
     assert.doesNotMatch(result.answer, /ссылку на товар|точное название модели|наличие/i);
   });
 });

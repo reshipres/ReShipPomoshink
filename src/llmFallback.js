@@ -147,7 +147,7 @@ export function createMockLlmClient() {
       return {
         intent: INTENTS.ORDER_STATUS,
         action: 'ask_clarifying_question',
-        answer: 'Проверю заказ. Пришлите номер заказа, трек CDEK, телефон или фамилию/ФИО получателя. Если найдено несколько заказов, попрошу уточнить точный номер или трек.',
+        answer: 'Проверю заказ. Пришлите номер заказа, трек CDEK, телефон или полное ФИО получателя. Если найдено несколько заказов, попрошу уточнить точный номер или трек.',
         needsHandoff: false,
         handoffReason: null,
         usedFacts: selectUsedFacts(ids, ['order_lookup_policy', 'no_invention_policy']),
