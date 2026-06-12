@@ -11,6 +11,79 @@ import {
 const orders = JSON.parse(readFileSync(new URL('../fixtures/system-orders.json', import.meta.url), 'utf8'));
 const products = JSON.parse(readFileSync(new URL('../fixtures/system-products.json', import.meta.url), 'utf8'));
 
+describe('new customer entry flow', () => {
+  it('greets newcomers without assuming they already have an order', () => {
+    for (const message of ['привет', '/start']) {
+      const result = handleCustomerMessage({
+        message,
+        customer: {},
+        orders,
+        products,
+      });
+
+      assert.equal(result.intent, 'greeting');
+      assert.equal(result.action, 'answer');
+      assert.equal(result.systemLookup, undefined);
+      assert.match(result.answer, /выбрать товар/);
+      assert.match(result.answer, /доставк/);
+      assert.match(result.answer, /Если заказ уже оформлен/);
+      assert.doesNotMatch(result.answer, /Напишите номер заказа/);
+      assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
+      assert.deepEqual(result.suggestedReplies, [
+        'Есть товар в наличии?',
+        'Как доставляете?',
+        'Где мой заказ?',
+      ]);
+    }
+  });
+
+  it('answers short newcomer menu topics instead of treating them as order lookups', () => {
+    const cases = [
+      {
+        message: 'доставка',
+        intent: 'delivery_terms',
+        includes: /CDEK/,
+      },
+      {
+        message: 'оплата',
+        intent: 'payment',
+        includes: /СБП/,
+      },
+      {
+        message: 'самовывоз',
+        intent: 'pickup',
+        includes: /Гончарный проезд/,
+      },
+      {
+        message: 'что у вас есть?',
+        intent: 'product_advice',
+        includes: /мышку, коврик, клавиатуру/,
+      },
+      {
+        message: 'хочу посмотреть товары',
+        intent: 'product_advice',
+        includes: /проверю наличие и цену/,
+      },
+    ];
+
+    for (const testCase of cases) {
+      const result = handleCustomerMessage({
+        message: testCase.message,
+        customer: {},
+        orders,
+        products,
+      });
+
+      assert.equal(result.intent, testCase.intent, testCase.message);
+      assert.notEqual(result.intent, 'order_status', testCase.message);
+      assert.equal(result.systemLookup, undefined, testCase.message);
+      assert.match(result.answer, testCase.includes, testCase.message);
+      assert.doesNotMatch(result.answer, /Нашел заказ/, testCase.message);
+      assert.doesNotMatch(result.answer, /номер заказа, трек CDEK, телефон или фамилию/, testCase.message);
+    }
+  });
+});
+
 describe('system order lookup', () => {
   it('finds an order by CDEK tracking number', () => {
     const order = findOrderContext('1234567890', orders);

@@ -12,12 +12,18 @@ npm run eval
 npm run analyze:telegram -- /Users/davidbukarov/Downloads/DataExport_2026-06-11.zip
 npm run chat
 npm run chat -- --anonymous
+npm run chat -- --hybrid
+npm run chat -- --hybrid --learn
 ```
 
 ## Как устроено
 
 - `src/engine.js` - низкоуровневое ядро: принимает сообщение, контекст заказа/товара и возвращает ответ.
 - `src/customerAdapter.js` - клиентский вход: сам подтягивает заказ/товар из переданных системных данных и повторно вызывает ядро.
+- `src/hybridSupportBrain.js` - гибридная обертка: сценарный слой остается главным, mock LLM включается только на неуверенных/сложных сообщениях.
+- `src/llmFallback.js` - контракт fallback-модели: строгий JSON, mock-клиент и проверка безопасности решения.
+- `src/supportFacts.js` - RAG-lite факты ReShip, которыми ограничивается fallback.
+- `src/learningLogger.js` - редактированный JSONL inbox для аналитики и будущего обучения сценариев.
 - `src/orderLookup.js` - поиск заказа по номеру, CRM-номеру, треку CDEK, телефону, фамилии или известному клиенту.
 - `src/productLookup.js` - поиск товара по ссылке, slug, названию модели и алиасам.
 - `src/intents.js` - детерминированная классификация фраз.
@@ -28,6 +34,7 @@ npm run chat -- --anonymous
 - `fixtures/system-products.json` - локальные товары для проверки ответов по наличию, цене и поиску товара.
 - `tests/engine.test.js` - регрессия, чтобы бот не деградировал.
 - `tests/customerAdapter.test.js` - клиентские сценарии с поиском заказа в системе.
+- `tests/hybridSupportBrain.test.js` - проверка mock LLM, shadow/prod режима и learning inbox.
 - `scripts/analyze-telegram-export.mjs` - локальный агрегированный анализ Telegram export без сохранения сырого текста.
 
 ## Интеграция
@@ -46,12 +53,32 @@ const result = handleCustomerMessage({
 });
 ```
 
+Для гибридного режима используйте `handleHybridCustomerMessage`. Сейчас реального API-ключа не нужно: fallback имитируется mock LLM, а интерфейс уже такой, чтобы позже заменить mock на OpenAI-клиент без переписывания сценарного ядра.
+
+```js
+import { handleHybridCustomerMessage } from './src/index.js';
+
+const result = await handleHybridCustomerMessage({
+  message: 'а вот это вообще как работает',
+  session,
+  customer,
+  orders,
+  products,
+  source: 'telegram',
+  learning: { enabled: true },
+});
+```
+
+По умолчанию гибрид работает в shadow-режиме: LLM-решение сохраняется в `result.llmFallback`, но клиент получает сценарный ответ. Чтобы разрешить fallback-ответ, передайте `llm: { shadow: false }`; даже тогда ответ применяется только если он прошел проверку фактов, confidence и safety.
+
 Сайт или Telegram-адаптер должны:
 
 1. Передать текст клиента, `session`, известного `customer`, массив заказов и товаров в `handleCustomerMessage`.
 2. Сохранить `result.nextSession` для следующего сообщения клиента.
 3. Показать `result.answer` клиенту.
 4. Если `needsHandoff === true`, создать тикет или позвать оператора.
+
+Для гибридной интеграции шаги те же, но вызывайте `handleHybridCustomerMessage` и сохраняйте `result.analyticsEvent`. Если включен `learning.enabled`, кандидаты для обучения пишутся в `learning/inbox/*.jsonl`; этот каталог игнорируется git.
 
 `handleMessage` остается доступен для низкоуровневых тестов и кастомной интеграции, где внешний код сам подтягивает `orderContext` или `productContext`.
 

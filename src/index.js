@@ -1,5 +1,9 @@
 export { handleMessage } from './engine.js';
 export { classifyMessage, INTENTS } from './intents.js';
 export { handleCustomerMessage } from './customerAdapter.js';
+export { handleHybridCustomerMessage, shouldUseLlmFallback } from './hybridSupportBrain.js';
+export { createMockLlmClient, isSafeLlmDecision, runLlmFallback } from './llmFallback.js';
+export { buildAnalyticsEvent, redactLearningText, shouldLogForLearning } from './learningLogger.js';
+export { retrieveSupportFacts } from './supportFacts.js';
 export { findLatestOrderContext, findOrderContext } from './orderLookup.js';
 export { findProductContext } from './productLookup.js';

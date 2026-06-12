@@ -50,6 +50,10 @@ export function classifyMessage(message, session = {}) {
   const lastIntent = session.lastIntent || null;
   const pendingRequest = session.pendingRequest || null;
 
+  if (messageLooksLikeStartCommand(message)) {
+    return match(INTENTS.GREETING, 0.99);
+  }
+
   const actionable = hasActionableRequest(message);
 
   if (!actionable && messageLooksLikeGeneralHelp(message)) {
@@ -75,6 +79,11 @@ export function classifyMessage(message, session = {}) {
   if (pendingRequest?.type === 'general') {
     const topicIntent = classifyGeneralTopicReply(text);
     if (topicIntent) return match(topicIntent, 0.9);
+  }
+
+  const menuTopicIntent = classifyShortMenuTopic(text);
+  if (menuTopicIntent) {
+    return match(menuTopicIntent, 0.9);
   }
 
   const orderDetail = extractOrderDetailRequest(message);
@@ -194,6 +203,7 @@ export function classifyMessage(message, session = {}) {
       priceDetail: extractPriceDetail(message),
     });
   }
+  if (messageLooksLikeCatalogBrowsingQuestion(message)) return match(INTENTS.PRODUCT_ADVICE, 0.82);
   if (messageLooksLikeAvailability(message)) {
     return match(INTENTS.AVAILABILITY, 0.88, {
       hint: extractProductHint(message),
@@ -215,6 +225,44 @@ export function classifyMessage(message, session = {}) {
 
 function match(intent, confidence, extras = {}) {
   return { intent, confidence, ...extras };
+}
+
+function messageLooksLikeStartCommand(message) {
+  return /^\/?(start|help|menu)$/i.test(String(message || '').trim());
+}
+
+function classifyShortMenuTopic(text) {
+  if (!text || text.length > 80 || text.split(/\s+/).length > 5) return null;
+
+  if (/^(доставка|доставки|сроки|срок доставки|сколько доставка|курьер|сдэк|cdek|способы доставки|типы доставки|тип доставки|отправка)$/i.test(text)) {
+    return INTENTS.DELIVERY_TERMS;
+  }
+
+  if (/^(оплата|оплатить|платеж|платежи|сбп|карта|чек|рассрочка|долями|сплит)$/i.test(text)) {
+    return INTENTS.PAYMENT;
+  }
+
+  if (/^(самовывоз|забрать|адрес)$/i.test(text)) {
+    return INTENTS.PICKUP;
+  }
+
+  if (/^(товар|товары|ассортимент|каталог|что есть|что у вас есть|посмотреть товары|хочу посмотреть товары|что продаете)$/i.test(text)) {
+    return INTENTS.PRODUCT_ADVICE;
+  }
+
+  if (/^(наличие|остатки|в наличии|модель|модели|карточка товара)$/i.test(text)) {
+    return INTENTS.AVAILABILITY;
+  }
+
+  if (/^(цена|стоимость|сколько стоит|скидка|промокод|акция)$/i.test(text)) {
+    return INTENTS.PRICE_DISCOUNT;
+  }
+
+  if (/^(заказ|заказы|мой заказ|статус|трек|трек номер|накладная|посылка|доставка заказа)$/i.test(text)) {
+    return INTENTS.ORDER_STATUS;
+  }
+
+  return null;
 }
 
 function classifyGeneralTopicReply(text) {
@@ -315,7 +363,7 @@ export function messageLooksLikeOrder(message) {
 }
 
 function messageLooksLikeAvailability(message) {
-  if (messageLooksLikeWarrantyQuestion(message) || messageLooksLikeProductAlternativeQuestion(message)) return false;
+  if (messageLooksLikeWarrantyQuestion(message) || messageLooksLikeProductAlternativeQuestion(message) || messageLooksLikeCatalogBrowsingQuestion(message)) return false;
 
   return /(в наличии|в нале|на складе|есть ли|есть\?|есть\s+(черн|бел|красн|син|розов|сер|фиолет|желт|зел|оранж)|какие\s+(цвета|расцветки)|какой\s+цвет|осталось|остаток|когда будет|появится|поступит|поступлен|поступлени|ожидается|ожидаете|поставка|завоз|дроп|предзаказ|под заказ|ресток|restock|доступен|можно заказать|будете завозить|привезете|привезёте)/i.test(message);
 }
@@ -378,9 +426,13 @@ function extractPriceDetail(message) {
 }
 
 function messageLooksLikeProductAdvice(message) {
-  return (messageLooksLikeProductAlternativeQuestion(message) || /(посовету|подскаж.*какой|что лучше|подойдет|совместим|размер|soft|xsoft|mid|свитч|switch|глайды|ковр|мышк|клавиатур)/i.test(message))
+  return (messageLooksLikeProductAlternativeQuestion(message) || messageLooksLikeCatalogBrowsingQuestion(message) || /(посовету|подскаж.*какой|что лучше|подойдет|совместим|размер|soft|xsoft|mid|свитч|switch|глайды|ковр|мышк|клавиатур)/i.test(message))
     && !messageLooksLikeAvailability(message)
     && !messageLooksLikePrice(message);
+}
+
+function messageLooksLikeCatalogBrowsingQuestion(message) {
+  return /(что\s+у\s+вас\s+есть|какие\s+(товары|мышки|коврики|клавиатуры|модели)\s+есть|что\s+прода[её]те|какой\s+ассортимент|покажите\s+(товары|каталог|ассортимент)|хочу\s+посмотреть\s+(товары|каталог|ассортимент)|посмотреть\s+(товары|каталог|ассортимент))/i.test(message);
 }
 
 function messageLooksLikeProductAlternativeQuestion(message) {

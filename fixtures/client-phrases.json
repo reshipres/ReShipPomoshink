@@ -1,5 +1,6 @@
 [
   { "message": "привет", "intent": "greeting", "action": "answer" },
+  { "message": "/start", "intent": "greeting", "action": "answer" },
   { "message": "приветствую", "intent": "greeting", "action": "answer" },
   { "message": "привет где мой заказ", "intent": "order_status", "action": "ask_clarifying_question" },
   { "message": "как тебя зовут", "intent": "assistant_identity", "action": "answer" },
@@ -10,6 +11,11 @@
   { "message": "окееей", "intent": "acknowledgement", "action": "answer" },
   { "message": "да", "intent": "acknowledgement", "action": "answer" },
   { "message": "можете подсказать?", "intent": "general_help", "action": "ask_clarifying_question" },
+  { "message": "доставка", "intent": "delivery_terms", "action": "answer" },
+  { "message": "оплата", "intent": "payment", "action": "answer" },
+  { "message": "самовывоз", "intent": "pickup", "action": "answer" },
+  { "message": "что у вас есть?", "intent": "product_advice", "action": "ask_clarifying_question" },
+  { "message": "хочу посмотреть товары", "intent": "product_advice", "action": "ask_clarifying_question" },
   { "message": "товар", "session": { "pendingRequest": { "type": "general", "strategy": "ask_for_question" } }, "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "наличие", "session": { "pendingRequest": { "type": "general", "strategy": "ask_for_question" } }, "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "доставка", "session": { "pendingRequest": { "type": "general", "strategy": "ask_for_question" } }, "intent": "delivery_terms", "action": "answer" },
