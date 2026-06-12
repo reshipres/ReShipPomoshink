@@ -96,6 +96,8 @@ function resolveProductContext(result, products, session) {
     if (variantSummaryContext) return variantSummaryContext;
 
     const productContext = findProductContext(request.hint, products);
+    if (!productContext) return null;
+
     if (productContext.lookupStatus === 'multiple') {
       return resolveContextualProductVariant(request.hint, session, products) || productContext;
     }

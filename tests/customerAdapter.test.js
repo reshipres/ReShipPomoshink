@@ -944,6 +944,47 @@ describe('customer-style order lookup conversations', () => {
   });
 });
 
+describe('manual support routing', () => {
+  it('hands off site and account access problems', () => {
+    for (const message of ['сайт лежит', 'не могу зайти в личный кабинет']) {
+      const result = handleCustomerMessage({ message });
+
+      assert.equal(result.intent, 'site_issue', message);
+      assert.equal(result.action, 'handoff_to_operator', message);
+      assert.equal(result.handoffReason, 'site_issue', message);
+      assert.match(result.answer, /проблема с сайтом|оформлением заказа/, message);
+      assert.doesNotMatch(result.answer, /Личный кабинет нужен/, message);
+    }
+  });
+
+  it('hands off external marketplace and manual preorder requests with useful wording', () => {
+    for (const message of [
+      'сможете привезти товар с maxgaming?',
+      'за сколько времени выкупаются товары под заказ?',
+      'планируете добавить на сайт новую клавиатуру?',
+    ]) {
+      const result = handleCustomerMessage({ message });
+
+      assert.equal(result.intent, 'custom_order_request', message);
+      assert.equal(result.action, 'handoff_to_operator', message);
+      assert.equal(result.handoffReason, 'custom_order_request', message);
+      assert.match(result.answer, /ручной расчет/, message);
+      assert.match(result.answer, /ссылка, размер, цвет или количество/, message);
+    }
+  });
+
+  it('recognizes accusative price wording as a price question', () => {
+    const result = handleCustomerMessage({
+      message: 'можете сказать предварительную цену черной версии?',
+    });
+
+    assert.equal(result.intent, 'price_discount');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.match(result.answer, /цену|цена/i);
+    assert.doesNotMatch(result.answer, /Напишите вопрос одним сообщением/);
+  });
+});
+
 describe('customer-style product lookup conversations', () => {
   it('answers availability when customer sends a known model', () => {
     const result = handleCustomerMessage({
