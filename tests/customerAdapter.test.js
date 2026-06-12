@@ -13,7 +13,7 @@ const products = JSON.parse(readFileSync(new URL('../fixtures/system-products.js
 
 describe('new customer entry flow', () => {
   it('greets newcomers without assuming they already have an order', () => {
-    for (const message of ['привет', '/start']) {
+    for (const message of ['привет', '/start', 'я первый раз', 'впервые', 'как у вас все работает?']) {
       const result = handleCustomerMessage({
         message,
         customer: {},
@@ -24,15 +24,16 @@ describe('new customer entry flow', () => {
       assert.equal(result.intent, 'greeting');
       assert.equal(result.action, 'answer');
       assert.equal(result.systemLookup, undefined);
+      assert.match(result.answer, /впервые у нас/);
       assert.match(result.answer, /выбрать товар/);
       assert.match(result.answer, /доставк/);
       assert.match(result.answer, /Если заказ уже оформлен/);
       assert.doesNotMatch(result.answer, /Напишите номер заказа/);
       assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
       assert.deepEqual(result.suggestedReplies, [
-        'Есть товар в наличии?',
+        'Что есть в наличии?',
         'Как доставляете?',
-        'Где мой заказ?',
+        'Как оформить заказ?',
       ]);
     }
   });
