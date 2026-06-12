@@ -1107,15 +1107,48 @@ describe('customer-style order lookup conversations', () => {
 
 describe('manual support routing', () => {
   it('hands off site and account access problems', () => {
-    for (const message of ['сайт лежит', 'не могу зайти в личный кабинет']) {
+    for (const message of [
+      'сайт лежит',
+      'не могу зайти в личный кабинет',
+      'мне пришло несколько одинаковых писем',
+      'письмо с подтверждением не пришло',
+    ]) {
       const result = handleCustomerMessage({ message });
 
       assert.equal(result.intent, 'site_issue', message);
       assert.equal(result.action, 'handoff_to_operator', message);
       assert.equal(result.handoffReason, 'site_issue', message);
-      assert.match(result.answer, /проблема с сайтом|оформлением заказа/, message);
+      assert.match(result.answer, /проблема с сайтом|оформлением|уведомлениями/, message);
       assert.doesNotMatch(result.answer, /Личный кабинет нужен/, message);
     }
+  });
+
+  it('hands off explicit follow-up requests and unresolved delays', () => {
+    for (const message of [
+      'сообщите пожалуйста в телеграм',
+      'обещали сегодня, но ничего не пришло',
+      'не пришли еще? уже месяц жду',
+    ]) {
+      const result = handleCustomerMessage({ message });
+
+      assert.equal(result.intent, 'human_requested', message);
+      assert.equal(result.action, 'handoff_to_operator', message);
+      assert.equal(result.handoffReason, 'requested_human', message);
+      assert.match(result.answer, /передаю вопрос оператору/i, message);
+      assert.doesNotMatch(result.answer, /Напишите вопрос одним сообщением/, message);
+    }
+  });
+
+  it('asks what to clarify when customer does not understand the product outcome', () => {
+    const result = handleCustomerMessage({
+      message: 'я не совсем понимаю что в итоге с товаром',
+    });
+
+    assert.equal(result.intent, 'general_help');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.equal(result.contextRequest.type, 'general');
+    assert.match(result.answer, /Напишите вопрос одним сообщением/);
+    assert.doesNotMatch(result.answer, /Где мой заказ/);
   });
 
   it('hands off external marketplace and manual preorder requests with useful wording', () => {
