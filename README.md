@@ -2,7 +2,7 @@
 
 Отдельное ядро клиентского помощника ReShip.
 
-Цель: быстро улучшать качество ответов бота без фронта, Telegram, Nest и LLM. Здесь лежит только сценарная логика: классификация фразы клиента, безопасный ответ, handoff оператору и тесты на реальные клиентские формулировки.
+Цель: быстро улучшать качество ответов бота без фронта и тяжелой интеграции с основным сайтом. Здесь лежит сценарная логика, гибридная LLM-обертка, learning/analytics и минимальный Telegram-адаптер для запуска актуального brain в боте.
 
 ## Команды
 
@@ -17,6 +17,7 @@ npm run chat -- --anonymous
 npm run chat -- --hybrid
 npm run chat -- --hybrid --learn
 npm run chat -- --hybrid --analytics
+npm run telegram
 ```
 
 ## Как устроено
@@ -40,6 +41,42 @@ npm run chat -- --hybrid --analytics
 - `tests/customerAdapter.test.js` - клиентские сценарии с поиском заказа в системе.
 - `tests/hybridSupportBrain.test.js` - проверка mock LLM, shadow/prod режима и learning inbox.
 - `scripts/analyze-telegram-export.mjs` - локальный агрегированный анализ Telegram export без сохранения сырого текста.
+- `scripts/telegram-bot.mjs` - live Telegram entrypoint поверх `handleHybridCustomerMessage`.
+
+## Telegram запуск
+
+```bash
+cp .env.example .env
+# заполнить TELEGRAM_BOT_TOKEN, при необходимости OPERATOR_CHAT_ID
+npm run telegram
+```
+
+По умолчанию Telegram-бот запускается в безопасном режиме:
+
+- использует текущий сценарный brain и mock LLM в shadow-режиме;
+- пишет редактированные analytics/learning события в `learning/events` и `learning/inbox`;
+- не подмешивает тестовые `fixtures` как реальные заказы/товары;
+- если `OPERATOR_CHAT_ID` задан, при handoff отправляет оператору редактированное уведомление.
+
+Чтобы включить реальный OpenAI fallback, добавьте в `.env`:
+
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-5-mini
+LLM_SHADOW=true
+```
+
+`LLM_SHADOW=true` означает, что OpenAI вызывается и логируется, но клиент получает сценарный ответ. Для боевого применения fallback-ответов нужно отдельно поставить `LLM_SHADOW=false`; даже тогда ответ применится только если прошел проверку фактов, confidence и safety.
+
+Чтобы подключить реальные данные без изменения кода, можно указать JSON-массивы:
+
+```bash
+RESHIP_ORDERS_JSON=/absolute/path/orders.json
+RESHIP_PRODUCTS_JSON=/absolute/path/products.json
+```
+
+Для продакшена вместо JSON нужно заменить этот слой на загрузку заказов/товаров из БД/API ReShip, оставив вызов `handleHybridCustomerMessage` тем же.
 
 ## Интеграция
 
@@ -57,7 +94,7 @@ const result = handleCustomerMessage({
 });
 ```
 
-Для гибридного режима используйте `handleHybridCustomerMessage`. Сейчас реального API-ключа не нужно: fallback имитируется mock LLM, а интерфейс уже такой, чтобы позже заменить mock на OpenAI-клиент без переписывания сценарного ядра.
+Для гибридного режима используйте `handleHybridCustomerMessage`. Без API-ключа fallback имитируется mock LLM. Для реального OpenAI используйте `createOpenAiLlmClient`; он вызывает Responses API со Structured Outputs и возвращает тот же JSON-контракт, который затем проверяется safety-слоем.
 
 ```js
 import { handleHybridCustomerMessage } from './src/index.js';
@@ -71,6 +108,23 @@ const result = await handleHybridCustomerMessage({
   source: 'telegram',
   analytics: { enabled: true },
   learning: { enabled: true },
+});
+```
+
+```js
+import { createOpenAiLlmClient, handleHybridCustomerMessage } from './src/index.js';
+
+const result = await handleHybridCustomerMessage({
+  message,
+  session,
+  customer,
+  orders,
+  products,
+  llm: {
+    client: createOpenAiLlmClient(),
+    model: process.env.OPENAI_MODEL || 'gpt-5-mini',
+    shadow: true,
+  },
 });
 ```
 

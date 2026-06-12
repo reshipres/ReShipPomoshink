@@ -3,6 +3,7 @@ export { classifyMessage, INTENTS } from './intents.js';
 export { handleCustomerMessage } from './customerAdapter.js';
 export { handleHybridCustomerMessage, shouldUseLlmFallback } from './hybridSupportBrain.js';
 export { createMockLlmClient, isSafeLlmDecision, runLlmFallback } from './llmFallback.js';
+export { buildOpenAiResponseRequest, createOpenAiLlmClient, parseOpenAiResponseJson } from './openaiLlmClient.js';
 export {
   appendAnalyticsEvent,
   appendLearningEvent,

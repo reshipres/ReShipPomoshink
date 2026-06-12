@@ -1231,6 +1231,8 @@ describe('manual support routing', () => {
       'не пришли еще? уже месяц жду',
       'не пришли еще? уже май заканчивается',
       'Слишком долгое ожидание',
+      'не отвечает',
+      'Я не могу дописаться до ребят на счёт сотрудничества',
     ]) {
       const result = handleCustomerMessage({ message });
 
@@ -1239,6 +1241,40 @@ describe('manual support routing', () => {
       assert.equal(result.handoffReason, 'requested_human', message);
       assert.match(result.answer, /передаю вопрос оператору/i, message);
       assert.doesNotMatch(result.answer, /Напишите вопрос одним сообщением/, message);
+    }
+  });
+
+  it('hands off money return and compensation issues', () => {
+    for (const message of [
+      'в какой день я получу свои деньги?',
+      'Вы 21 числа сказали что в ближайшие пару дней деньги вернутся',
+      'еще раз здравствуйте, средства все еще не пришли',
+      'Так вы же писали что в течение 10 дней деньги должны придти',
+      'А деньги сколько вернут?',
+      'Сейчас я решу и чуть позже вам отвечу. Но я хотел бы узнать, будет ли какое-то возмещение за такое долгое ожидание и в итоге отсутствие товара',
+      'А то я от туда деньги не могу вывести',
+    ]) {
+      const result = handleCustomerMessage({ message });
+
+      assert.equal(result.intent, 'payment', message);
+      assert.equal(result.action, 'handoff_to_operator', message);
+      assert.equal(result.handoffReason, 'billing_issue', message);
+      assert.match(result.answer, /оператор|платеж|оплате/i, message);
+      assert.doesNotMatch(result.answer, /Я могу помочь с выбором товара/, message);
+    }
+  });
+
+  it('hands off cancellation questions that include money return', () => {
+    for (const message of [
+      'а ещё вопрос, я могу отменить бронь, мне все деньги вернут?',
+      'а отменить уже не получиться да? вы заплатили уже деньги',
+    ]) {
+      const result = handleCustomerMessage({ message });
+
+      assert.equal(result.intent, 'order_change', message);
+      assert.equal(result.action, 'handoff_to_operator', message);
+      assert.equal(result.handoffReason, 'order_change', message);
+      assert.match(result.answer, /оператор|изменение заказа/i, message);
     }
   });
 
