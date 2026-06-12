@@ -182,7 +182,7 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.ORDER_HELP, 0.9);
   }
 
-  if (!actionable && messageLooksLikeAcknowledgement(message)) {
+  if (messageLooksLikeAcknowledgement(message)) {
     return match(INTENTS.ACKNOWLEDGEMENT, 0.96);
   }
 
@@ -410,7 +410,7 @@ function messageLooksLikePickupQuestion(message) {
   if (extractOrderHint(message) || messageMentionsOrderContext(message)) return false;
 
   const text = normalizeText(message);
-  return /(самовывоз|самовывоза|самовывозом|забрать\s+самовывозом|пункт\s+самовывоза).{0,60}(есть|можно|адрес|где|куда|наход|работ|когда|во\s+сколько)?|(?:где|куда|адрес|можно).{0,40}самовывоз/i.test(text);
+  return /(самовывоз|самовывоза|самовывозом|забрать\s+самовывозом|пункт\s+самовывоза).{0,60}(есть|можно|адрес|где|куда|наход|работ|когда|во\s+сколько)?|(?:где|куда|адрес|можно).{0,40}самовывоз|гончарн.{0,40}(работ|открыт|можно|сегодня|завтра)|(?:работаете|работает|открыты|открыто).{0,40}(сегодня|завтра|еще|ещё)|(?:могу|можно).{0,30}(сегодня|завтра).{0,30}(подъехать|приехать|забрать)/i.test(text);
 }
 
 function messageLooksLikePrice(message) {
@@ -426,7 +426,7 @@ function extractPriceDetail(message) {
 }
 
 function messageLooksLikeProductAdvice(message) {
-  return (messageLooksLikeProductAlternativeQuestion(message) || messageLooksLikeCatalogBrowsingQuestion(message) || /(посовету|подскаж.*какой|что лучше|подойдет|совместим|размер|soft|xsoft|mid|свитч|switch|глайды|ковр|мышк|клавиатур)/i.test(message))
+  return (messageLooksLikeProductAlternativeQuestion(message) || messageLooksLikeCatalogBrowsingQuestion(message) || /(посовету|подскаж.*какой|что лучше|подойдет|совместим|размер|soft|xsoft|mid|свитч|switch|глайды|ковр|мышк|мышь|мыши|клавиатур|отличи[ея]|отличаются|чем отличаются|надежн|надёжн|актуальн|есть смысл.{0,40}брать|для.{0,30}хват|пальцев(ый|ого)\s+хват|оригинал|копия)/i.test(message))
     && !messageLooksLikeAvailability(message)
     && !messageLooksLikePrice(message);
 }
@@ -465,6 +465,7 @@ function messageLooksLikeAcknowledgement(message) {
   if (!text || /(не понял|не поняла|не понимаю|не понятно|непонятно|\?|(?:^|\s)(вопрос(?!ов\s+нет)|подскаж|скажите|сколько|когда|где|как|можно|есть ли)(?:\s|$))/i.test(message)) return false;
 
   if (/^(вопросов\s+нет|спасибо).{0,80}(закажу|подумаю|напишу|отпишусь|ожидаю|буду\s+ждать|хорошего\s+дня|хорошего\s+вечера)/i.test(text)) return true;
+  if (/^(все|да|пон|понял|увидел|хорошо|отлично|пока\s+не\s+надо).{0,50}(понял|верно|спасибо|благодарю|жду|ожидаю|буду\s+ждать|помощь|ответ|информаци)/i.test(text)) return true;
 
   return /^(да|нет|ага|угу|ок+|оке+й+|окей|хорошо|ладно|понял[а]?|понятно|ясно|принял[а]?|верно|спасибо|спс|благодарю|супер|отлично|договорились|ничего страшного|без проблем|извините|прошу прощения|подумаю|напишу|отпишусь|хорошего дня|хорошего вечера|большое спасибо|спасибо большое|спасибо за [a-zа-я0-9\\s-]{3,80}|спасибо большое за [a-zа-я0-9\\s-]{3,80}|большое спасибо за [a-zа-я0-9\\s-]{3,80}|благодарю за [a-zа-я0-9\\s-]{3,80}|жаль|ура|кайф|конечно|вопросов нет|буду ждать|жду|ожидаю|до завтра|в следующий раз|закажу в следующий раз|ближе к [a-zа-я0-9\\s-]{3,40} закажу|пойду закажу|да он самый|а я слепой|я слепой)(\s+(вам|тебе|большое|спасибо|понял[а]?|окей|хорошо|супер|отлично|дня|вечера|ожидаю))*[)!\\.]*$/i.test(text);
 }

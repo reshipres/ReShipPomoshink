@@ -14,6 +14,10 @@
   { "message": "буду ждать", "intent": "acknowledgement", "action": "answer" },
   { "message": "вопросов нет, спасибо", "intent": "acknowledgement", "action": "answer" },
   { "message": "спасибо, позже закажу", "intent": "acknowledgement", "action": "answer" },
+  { "message": "все понял", "intent": "acknowledgement", "action": "answer" },
+  { "message": "да, все верно", "intent": "acknowledgement", "action": "answer" },
+  { "message": "пока не надо, спасибо", "intent": "acknowledgement", "action": "answer" },
+  { "message": "спасибо за помощь", "intent": "acknowledgement", "action": "answer" },
   { "message": "можете подсказать?", "intent": "general_help", "action": "ask_clarifying_question" },
   { "message": "доставка", "intent": "delivery_terms", "action": "answer" },
   { "message": "оплата", "intent": "payment", "action": "answer" },
@@ -69,6 +73,10 @@
   { "message": "а отзывы есть", "intent": "review", "action": "answer" },
   { "message": "есть аналоги?", "intent": "product_advice", "action": "ask_clarifying_question" },
   { "message": "что похожее есть?", "intent": "product_advice", "action": "ask_clarifying_question" },
+  { "message": "в чем отличие этих двух товаров?", "intent": "product_advice", "action": "ask_clarifying_question" },
+  { "message": "какая мышь более надежная?", "intent": "product_advice", "action": "ask_clarifying_question" },
+  { "message": "есть смысл эту мышь брать для пальцевого хвата?", "intent": "product_advice", "action": "ask_clarifying_question" },
+  { "message": "это оригинал или копия?", "intent": "product_advice", "action": "ask_clarifying_question" },
   { "message": "можно ссылку", "session": { "lastProductLookup": { "name": "WLmouse Beast Max Black", "slug": "wlmouse-beast-max-black" } }, "intent": "order_help", "action": "answer" },
   { "message": "а подойдет для claw grip", "session": { "lastProductLookup": { "name": "WLmouse Beast Max Black", "slug": "wlmouse-beast-max-black" } }, "intent": "product_advice", "action": "ask_clarifying_question" },
   { "message": "я не могу найти wlmouse beast на сайте", "intent": "product_search", "action": "ask_clarifying_question" },
@@ -96,5 +104,7 @@
   { "message": "гарантия есть?", "intent": "warranty_or_return", "action": "answer" },
   { "message": "хочу вернуть товар", "intent": "warranty_or_return", "action": "handoff_to_operator" },
   { "message": "самовывоз есть?", "intent": "pickup", "action": "answer" },
-  { "message": "адрес самовывоза", "intent": "pickup", "action": "answer" }
+  { "message": "адрес самовывоза", "intent": "pickup", "action": "answer" },
+  { "message": "гончарная сегодня работает?", "intent": "pickup", "action": "answer" },
+  { "message": "можно завтра подъехать?", "intent": "pickup", "action": "answer" }
 ]
