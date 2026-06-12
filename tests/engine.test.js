@@ -117,6 +117,21 @@ describe('order answer quality', () => {
     assert.doesNotMatch(second.answer, /^Проверю заказ\. Пришлите/u);
   });
 
+  it('handles missing order identifier replies without searching that phrase', () => {
+    const first = handleMessage({ message: 'где мой заказ' });
+    const second = handleMessage({
+      message: 'у меня нет',
+      session: first.nextSession,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'ask_clarifying_question');
+    assert.equal(second.contextRequest.type, 'order');
+    assert.equal(second.contextRequest.strategy, 'ask_for_hint');
+    assert.match(second.answer, /Номер заказа не обязателен/);
+    assert.doesNotMatch(second.answer, /по этим данным/);
+  });
+
   it('clears pending request after answering with order context', () => {
     const result = handleMessage({
       message: '+7 999 123 45 67',

@@ -140,6 +140,22 @@ export function classifyMessage(message, session = {}) {
     });
   }
 
+  if (orderDetail === 'delivery_timing' && messageLooksLikeShortTimingFollowup(message)) {
+    if (hasExternalUrl(message)) {
+      return match(INTENTS.CUSTOM_ORDER_REQUEST, 0.9);
+    }
+
+    if (messageLooksLikeProductFulfillmentQuestion(message)) {
+      return match(INTENTS.AVAILABILITY, 0.82, { productDetail: 'restock_timing' });
+    }
+
+    if (session?.lastProductLookup) {
+      return match(INTENTS.AVAILABILITY, 0.82, { productDetail: 'restock_timing' });
+    }
+
+    return match(INTENTS.GENERAL_HELP, 0.78, { detail: 'timing_context' });
+  }
+
   if (messageLooksLikeOrderChange(message)) {
     return match(INTENTS.ORDER_CHANGE, 0.98);
   }
@@ -362,6 +378,10 @@ function classifyGeneralTopicReply(text) {
 }
 
 function messageCanUseOrderDetailContext(message, session) {
+  if (!extractOrderHint(message) && messageLooksLikeProductFulfillmentQuestion(message)) {
+    return false;
+  }
+
   return session?.lastIntent === INTENTS.ORDER_STATUS
     || session?.pendingRequest?.type === 'order'
     || Boolean(extractOrderHint(message))
@@ -369,6 +389,8 @@ function messageCanUseOrderDetailContext(message, session) {
 }
 
 function messageMentionsOrderContext(message) {
+  if (messageLooksLikeProductFulfillmentQuestion(message)) return false;
+
   const words = normalizeText(message).split(/\s+/).filter(Boolean);
   const exactWords = new Set([
     'заказ',
@@ -418,6 +440,7 @@ export function messageLooksLikeOrder(message) {
   if (messageLooksLikeAvailability(message) || messageLooksLikePrice(message) || messageLooksLikeProductAdvice(message)) return false;
   if (messageLooksLikeDeliveryPolicyQuestion(message)) return false;
   if (messageLooksLikeOrderNotificationQuestion(message) || messageLooksLikeOrderInfoQuestion(message) || messageLooksLikePotentialDelayQuestion(message)) return false;
+  if (!extractOrderHint(message) && messageLooksLikeProductFulfillmentQuestion(message)) return false;
 
   return Boolean(extractOrderHint(message))
     || hasPhoneNumber(message)
@@ -498,6 +521,11 @@ function messageLooksLikeDeliveryPolicyQuestion(message) {
     || /(?:сдэк|cdek).{0,40}(?:росси|рф|регион|город|пвз|курьер)/i.test(text)
     || /(?:можно|заказать|заказат|доставк[аи]|отправк[аи]).{0,40}(?:другой\s+город|регион|росси|рф|город)/i.test(text)
     || /курьер.{0,30}пвз|пвз.{0,30}курьер/i.test(text);
+}
+
+function messageLooksLikeProductFulfillmentQuestion(message) {
+  return hasExternalUrl(message)
+    || /(?:под\s+заказ|предзаказ|пред\s+заказ|в\s+наличии|поступ|поставка|завоз|ресток|restock|дроп|артикул)/i.test(message);
 }
 
 function messageLooksLikePickupQuestion(message) {
@@ -602,6 +630,7 @@ function messageLooksLikeAcknowledgement(message) {
   if (/^(сейчас|ща|секунду|минуту|минуточку).{0,60}(гляну|посмотрю|проверю|напишу|отпишусь|чиркану|скину|пришлю)?$/i.test(text)) return true;
   if (/^(ок|окей|оке|хорошо|ладно).{0,60}(сейчас|щас|ща|гляну|посмотрю|проверю|напишу|отпишусь|чиркану|понял|поняла)/i.test(text)) return true;
   if (/^(так\s+)?все\s+(же\s+)?(ок|окей|хорошо|понял|понятно)/i.test(text)) return true;
+  if (/^(у\s+меня\s+)?нету?[.!)]*$|^неи[.!)]*$|^только\s+такие[.!)]*$/i.test(text)) return true;
 
   return /^(да|нет|неа|ага|угу|ок+|оке+й+|окей|оке|хорошо|ладно|понял[а]?|понятно|ясно|принял[а]?|верно|спасибо|спс|благодарю|благодарю вас|супер|отлично|договорились|ничего страшного|без проблем|извините|прошу прощения|подумаю|напишу|отпишусь|хорошего дня|хорошего вечера|большое спасибо|спасибо большое|спасибо огромное|спасибо за [a-zа-я0-9\s-]{3,80}|спасибо большое за [a-zа-я0-9\s-]{3,80}|большое спасибо за [a-zа-я0-9\s-]{3,80}|благодарю за [a-zа-я0-9\s-]{3,80}|жаль|очень жаль|грустно|ура|кайф|конечно|вопросов нет|буду ждать|очень жду|жду|ожидаю|до завтра|в следующий раз|закажу в следующий раз|ближе к [a-zа-я0-9\s-]{3,40} закажу|пойду закажу|да он самый|а я слепой|я слепой|сейчас|ща|секунду|готово|написал[а]?|думаю да|окак|эх|ой|давайте|да давайте)(\s+(вам|тебе|тебя|большое|спасибо|понял[а]?|окей|хорошо|супер|отлично|дня|вечера|ожидаю))*[)!\\.]*$/i.test(text);
 }
@@ -684,7 +713,14 @@ function messageLooksLikePaymentMethodQuestion(message) {
 }
 
 function messageLooksLikeMissingOrderIdentifier(message) {
-  return /(нет|не\s+знаю|не\s+помню|не\s+наш[её]л|потерял).{0,40}(номер|заказ|трек|накладн)|(?:номер|трек|накладн).{0,40}(нет|не\s+знаю|не\s+помню|потерял)|^(не\s+знаю|не\s+помню|нет\s+номера|нету\s+номера)$/i.test(message);
+  return /(нет|не\s+знаю|не\s+помню|не\s+наш[её]л|потерял).{0,40}(номер|заказ|трек|накладн)|(?:номер|трек|накладн).{0,40}(нет|не\s+знаю|не\s+помню|потерял)|^(у\s+меня\s+)?(не\s+знаю|не\s+помню|нет|нету|нет\s+номера|нету\s+номера)$/i.test(message);
+}
+
+function messageLooksLikeShortTimingFollowup(message) {
+  const text = normalizeText(message);
+  if (!text || text.length > 90) return false;
+
+  return /(?:примерно\s+когда|когда\s+примерно|по\s+срокам|что\s+по\s+срокам|когда\s+ждать|когда\s+будет|когда\s+приедет|когда\s+получится|жду.{0,30}когда|когда\?)|(?:хорошо|ок|окей|понял|поняла|жду).{0,50}(?:когда|срок)/i.test(text);
 }
 
 function messageLooksLikeCustomOrderRequest(message) {

@@ -1407,6 +1407,7 @@ describe('manual support routing', () => {
       'сможете привезти товар с maxgaming?',
       'за сколько времени выкупаются товары под заказ?',
       'планируете добавить на сайт новую клавиатуру?',
+      'когда снова будет в наличии/возможно под заказ? https://example.com/item/123',
     ]) {
       const result = handleCustomerMessage({ message });
 
@@ -1415,6 +1416,7 @@ describe('manual support routing', () => {
       assert.equal(result.handoffReason, 'custom_order_request', message);
       assert.match(result.answer, /ручной расчет/, message);
       assert.match(result.answer, /ссылка, размер, цвет или количество/, message);
+      assert.doesNotMatch(result.answer, /номер заказа|трек CDEK|фамилию получателя/i, message);
     }
   });
 
