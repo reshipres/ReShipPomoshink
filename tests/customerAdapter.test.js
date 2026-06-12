@@ -1406,6 +1406,22 @@ describe('customer-style product lookup conversations', () => {
     assert.doesNotMatch(second.answer, /Я могу проверить/);
   });
 
+  it('asks for exact product when customer asks about future sale or restock', () => {
+    for (const message of [
+      'не будет ли у вас в продаже pwnage skates?',
+      'нет ли информации что еще должно прийти?',
+      'появятся ли у вас глайды для sora?',
+    ]) {
+      const result = handleCustomerMessage({ message });
+
+      assert.equal(result.intent, 'availability', message);
+      assert.equal(result.action, 'ask_clarifying_question', message);
+      assert.equal(result.contextRequest.type, 'product', message);
+      assert.match(result.answer, /поступлен|срок|статус/i, message);
+      assert.doesNotMatch(result.answer, /Я могу помочь с выбором/, message);
+    }
+  });
+
   it('hands off restock timing follow-up for preorder products without guessing a date', () => {
     const first = handleCustomerMessage({
       message: 'wlmouse beast x mini есть?',
@@ -1572,6 +1588,21 @@ describe('customer-style product lookup conversations', () => {
     assert.match(second.answer, /размер руки/);
     assert.doesNotMatch(second.answer, /Напишите модель устройства/);
     assert.doesNotMatch(second.answer, /Я могу проверить/);
+  });
+
+  it('routes speed control and grip questions to product advice', () => {
+    for (const message of [
+      'это control или speed?',
+      'подскажите по скорости стеклопада',
+      'какие грипы подходят?',
+    ]) {
+      const result = handleCustomerMessage({ message });
+
+      assert.equal(result.intent, 'product_advice', message);
+      assert.equal(result.action, 'ask_clarifying_question', message);
+      assert.match(result.answer, /speed\/control|грип|совместимость|модель/i, message);
+      assert.doesNotMatch(result.answer, /Я могу помочь с выбором товара, наличием/, message);
+    }
   });
 
   it('answers alternative follow-ups for the previously found product without repeating availability', () => {
