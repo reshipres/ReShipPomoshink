@@ -80,6 +80,37 @@ export function composeOrderStatusAnswer(order) {
   return lines.join('\n');
 }
 
+export function composeOrderInfoAnswer(detail = null) {
+  if (detail === 'potential_delay') {
+    return 'По общим правилам точные задержки нельзя угадывать без заказа или конкретного товара. Если вопрос про уже оформленный заказ, пришлите номер заказа, трек CDEK, телефон или фамилию получателя — проверю статус. Если вопрос про предзаказ или поставку, пришлите ссылку или точное название модели; если точного срока нет в базе, передам оператору.';
+  }
+
+  if (detail === 'notification') {
+    return 'По заказу обычно стоит ориентироваться на статус в личном кабинете и уведомления от доставки после передачи в CDEK. Точный канал уведомления зависит от заказа и контактов. Если хотите проверить конкретный заказ или понять, почему уведомление не пришло, пришлите номер заказа, трек CDEK, телефон или ФИО получателя.';
+  }
+
+  const statuses = [
+    ['ожидает оплаты', ORDER_STATUS_EXPLANATION.pending],
+    ['оплачен', ORDER_STATUS_EXPLANATION.paid],
+    ['в обработке / собирается / упаковывается', 'заказ готовится к выдаче или отправке'],
+    ['передан в доставку / в доставке', ORDER_STATUS_EXPLANATION.shipping],
+    ['ожидает получения / завершен', 'заказ можно получать или он уже закрыт'],
+    ['отменен', ORDER_STATUS_EXPLANATION.cancelled],
+  ];
+
+  const statusText = statuses
+    .map(([status, explanation]) => `${status} — ${cleanInlineSentence(explanation || '')}`)
+    .join('; ');
+
+  return `Основные статусы заказа: ${statusText}. Проверить конкретный заказ могу по номеру заказа, треку CDEK, телефону, email или ФИО получателя.`;
+}
+
+function cleanInlineSentence(text) {
+  if (!text) return text;
+  const normalized = text.trim().replace(/[.]+$/g, '');
+  return `${normalized.charAt(0).toLowerCase()}${normalized.slice(1)}`;
+}
+
 export function composeOrderDetailAnswer(order, detail) {
   const orderLabel = order.crmOrderNumber || order.orderNumber || order.shortId || order.orderId || 'без номера';
 

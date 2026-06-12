@@ -1185,6 +1185,25 @@ describe('customer-style order lookup conversations', () => {
 });
 
 describe('manual support routing', () => {
+  it('answers general order status and delay questions without forcing order lookup', () => {
+    for (const message of [
+      'Приветствую, какие вообще бывают статусы заказа на сайте?',
+      'То есть по идеи, мой заказ уже выкуплен? И уже на складе Зарубежном +- , а с какого этапа будет отражаться на сайте?',
+      'Здравствуйте, вопрос - получу ли я уведомление на сайте/в тг/на почту о том, что мышка перешла в этап доставки до Москвы?',
+      'Задержек не планируется?',
+      'а на сайте почему 1-10 висит?',
+    ]) {
+      const result = handleCustomerMessage({ message });
+
+      assert.equal(result.intent, 'order_info', message);
+      assert.equal(result.action, 'answer', message);
+      assert.equal(result.systemLookup, undefined, message);
+      assert.match(result.answer, /статус|заказ|задерж|номер заказа|модель/i, message);
+      assert.doesNotMatch(result.answer, /^Проверю заказ\. Пришлите/u, message);
+      assert.doesNotMatch(result.answer, /Проверю этот товар по базе/i, message);
+    }
+  });
+
   it('hands off site and account access problems', () => {
     for (const message of [
       'сайт лежит',

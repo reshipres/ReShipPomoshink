@@ -4,6 +4,7 @@ import {
   answer,
   ask,
   composeOrderDetailAnswer,
+  composeOrderInfoAnswer,
   composeOrderStatusAnswer,
   composeProductAvailabilityAnswer,
   composeProductAdviceAnswer,
@@ -170,6 +171,13 @@ function routeDecision(classified, message, context) {
         'Проверь последний заказ',
         'Позови оператора',
       ], classified.confidence, { type: 'order', strategy: 'ask_for_hint' });
+
+    case INTENTS.ORDER_INFO:
+      return answer('order_info', composeOrderInfoAnswer(classified.detail), [
+        'Где мой заказ?',
+        'Как доставляете?',
+        'Позови оператора',
+      ], classified.confidence);
 
     case INTENTS.ORDER_LOOKUP_FOLLOWUP:
     case INTENTS.ORDER_STATUS:

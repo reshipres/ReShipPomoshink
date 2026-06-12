@@ -54,6 +54,49 @@ describe('order answer quality', () => {
     assert.doesNotMatch(result.answer, /6_L/);
   });
 
+  it('answers general order status glossary without starting lookup', () => {
+    const result = handleMessage({
+      message: 'какие вообще бывают статусы заказа на сайте?',
+    });
+
+    assert.equal(result.intent, 'order_info');
+    assert.equal(result.action, 'answer');
+    assert.equal(result.nextSession.pendingRequest, undefined);
+    assert.match(result.answer, /Основные статусы заказа/);
+    assert.match(result.answer, /ожидает оплаты/);
+    assert.match(result.answer, /в доставке/);
+    assert.match(result.answer, /Проверить конкретный заказ/);
+    assert.doesNotMatch(result.answer, /^Проверю заказ\. Пришлите/u);
+  });
+
+  it('answers potential delay questions without inventing certainty', () => {
+    for (const message of [
+      'задержек не планируется?',
+      'будут какие-то задержки из-за праздника?',
+      'а на сайте почему 1-10 висит?',
+    ]) {
+      const result = handleMessage({ message });
+
+      assert.equal(result.intent, 'order_info', message);
+      assert.equal(result.action, 'answer', message);
+      assert.match(result.answer, /нельзя угадывать|без заказа|конкретного товара/i, message);
+      assert.match(result.answer, /номер заказа|модель/i, message);
+      assert.doesNotMatch(result.answer, /Я могу помочь с выбором товара/, message);
+    }
+  });
+
+  it('answers order notification questions without treating them as product search', () => {
+    const result = handleMessage({
+      message: 'получу ли уведомление когда заказ перейдет в доставку?',
+    });
+
+    assert.equal(result.intent, 'order_info');
+    assert.equal(result.action, 'answer');
+    assert.match(result.answer, /личном кабинете|CDEK|уведомлен/i);
+    assert.match(result.answer, /номер заказа|трек CDEK|ФИО/i);
+    assert.doesNotMatch(result.answer, /Проверю этот товар по базе/i);
+  });
+
   it('keeps pending order lookup request for the next customer message', () => {
     const first = handleMessage({ message: 'где мой заказ' });
 

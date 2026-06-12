@@ -17,6 +17,7 @@ export const INTENTS = {
   ACKNOWLEDGEMENT: 'acknowledgement',
   HUMAN_REQUESTED: 'human_requested',
   ORDER_STATUS: 'order_status',
+  ORDER_INFO: 'order_info',
   ORDER_LOOKUP_FOLLOWUP: 'order_lookup_followup',
   ORDER_SWITCH: 'order_switch',
   ORDER_CHANGE: 'order_change',
@@ -119,6 +120,18 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.DELIVERY_TERMS, 0.9);
   }
 
+  if (messageLooksLikeOrderNotificationQuestion(message)) {
+    return match(INTENTS.ORDER_INFO, 0.88, { detail: 'notification' });
+  }
+
+  if (messageLooksLikeOrderInfoQuestion(message)) {
+    return match(INTENTS.ORDER_INFO, 0.88);
+  }
+
+  if (messageLooksLikePotentialDelayQuestion(message)) {
+    return match(INTENTS.ORDER_INFO, 0.82, { detail: 'potential_delay' });
+  }
+
   if (orderDetail && (orderDetail !== 'delivery_timing' || messageCanUseOrderDetailContext(message, session))) {
     const hint = extractOrderHint(message);
     return match(INTENTS.ORDER_STATUS, 0.9, {
@@ -127,16 +140,16 @@ export function classifyMessage(message, session = {}) {
     });
   }
 
+  if (messageLooksLikeOrderChange(message)) {
+    return match(INTENTS.ORDER_CHANGE, 0.98);
+  }
+
   if (messageLooksLikePaymentMethodQuestion(message)) {
     return match(INTENTS.PAYMENT, 0.86);
   }
 
   if (messageLooksLikeWarrantyQuestion(message)) {
     return match(INTENTS.WARRANTY_OR_RETURN, 0.88);
-  }
-
-  if (messageLooksLikeOrderChange(message)) {
-    return match(INTENTS.ORDER_CHANGE, 0.98);
   }
 
   if (messageLooksLikeSiteIssue(message)) {
@@ -367,6 +380,9 @@ function messageMentionsOrderContext(message) {
 
 export function hasActionableRequest(message) {
   return messageLooksLikeOrder(message)
+    || messageLooksLikeOrderNotificationQuestion(message)
+    || messageLooksLikeOrderInfoQuestion(message)
+    || messageLooksLikePotentialDelayQuestion(message)
     || looksLikeStandaloneOrderLookup(message)
     || looksLikeDeliveryDataPayload(message)
     || messageLooksLikePickupQuestion(message)
@@ -388,10 +404,33 @@ export function hasActionableRequest(message) {
 export function messageLooksLikeOrder(message) {
   if (messageLooksLikeAvailability(message) || messageLooksLikePrice(message) || messageLooksLikeProductAdvice(message)) return false;
   if (messageLooksLikeDeliveryPolicyQuestion(message)) return false;
+  if (messageLooksLikeOrderNotificationQuestion(message) || messageLooksLikeOrderInfoQuestion(message) || messageLooksLikePotentialDelayQuestion(message)) return false;
 
   return Boolean(extractOrderHint(message))
     || hasPhoneNumber(message)
     || /(заказ|статус|трек|трек-?номер|накладн|сдэк|cdek|достав|где.*посыл|едет|отправ|когда.*приед|когда.*получ|когда.*отправ)/i.test(message);
+}
+
+function messageLooksLikeOrderInfoQuestion(message) {
+  const text = normalizeText(message);
+  if (!text || extractOrderHint(message)) return false;
+
+  return /(?:какие|что\s+знач|что\s+означа|как\s+понять|объясните|расскажите).{0,50}(?:статус|статусы).{0,80}(?:заказ|сайт|личн|кабинет)?|(?:статус|статусы).{0,60}(?:заказа|на\s+сайте|в\s+личном\s+кабинете).{0,60}(?:что\s+знач|что\s+означа|какие|бывают|как\s+понять|объясните)|(?:с\s+какого|на\s+каком).{0,80}(?:этап|момент).{0,80}(?:отраж|появ|видн).{0,60}(?:на\s+сайте|в\s+личном\s+кабинете|статус)/i.test(text);
+}
+
+function messageLooksLikePotentialDelayQuestion(message) {
+  const text = normalizeText(message);
+  if (!text || extractOrderHint(message)) return false;
+  if (/(уже|месяц|недел|(?:^|\s)(?:\d+\s*)?дн(?:я|ей|и)?(?=\s|$)|долго|слишком|обещали|должн[аоы]?).{0,80}(?:жду|не\s+приш|задерж|долг)|(?:жду|не\s+приш|задерж).{0,80}(?:уже|месяц|недел|(?:^|\s)(?:\d+\s*)?дн(?:я|ей|и)?(?=\s|$)|долго|слишком)/i.test(text)) return false;
+
+  return /(?:задержк|задержек).{0,60}(?:не\s+план|будут|есть|из-за|из\s+за|праздник|поставк|ожида)|(?:будут|есть|планируются|не\s+планируются).{0,60}(?:задержк|задержек)|(?:почему|что\s+значит|что\s+означает).{0,60}(?:1-10|1\s*-\s*10).{0,50}(?:висит|дней|срок|на\s+сайте)|(?:1-10|1\s*-\s*10).{0,50}(?:висит|дней|срок).{0,50}(?:на\s+сайте|почему)?/i.test(text);
+}
+
+function messageLooksLikeOrderNotificationQuestion(message) {
+  const text = normalizeText(message);
+  if (!text || extractOrderHint(message)) return false;
+
+  return /(?:получу|прид[её]т|будет|приходит|приходят).{0,60}(?:уведомлен|сообщени|смс|sms|письм).{0,90}(?:статус|доставк|отправк|этап|почт|телеграм|тг|сд[эе]к|cdek)|(?:уведомлен|сообщени|смс|sms|письм).{0,60}(?:получу|прид[её]т|будет|приходит|приходят).{0,90}(?:статус|доставк|отправк|этап|почт|телеграм|тг|сд[эе]к|cdek)/i.test(text);
 }
 
 function messageLooksLikeAvailability(message) {
@@ -613,7 +652,7 @@ function messageLooksLikePaymentMethodQuestion(message) {
     return false;
   }
 
-  return /(как.*оплат|чем.*оплат|можно.*оплат|оплатить.*(карт|сбп|сайт)|сбп|карта|картой|номер карты|перевод|налож|наложк|при\s+получени|постоплат|рассрочк|долями|сплит|частями|чек|квитанц)/i.test(message);
+  return /(как.*оплат|чем.*оплат|можно.*оплат|могу.*оплач|можно.*оплач|оплачивать.{0,30}(?:без\s+проблем|можно|безопасно)|оплатить.*(карт|сбп|сайт)|сбп|карта|картой|номер карты|перевод|налож|наложк|при\s+получени|постоплат|рассрочк|долями|сплит|частями|чек|квитанц)/i.test(message);
 }
 
 function messageLooksLikeMissingOrderIdentifier(message) {
