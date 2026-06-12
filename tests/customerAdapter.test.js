@@ -65,6 +65,20 @@ describe('system order lookup', () => {
     assert.equal(findOrderContext('получатель Илья Иванов', orders).crmOrderNumber, '7_M');
   });
 
+  it('finds orders by full name even when customer adds a patronymic', () => {
+    assert.equal(findOrderContext('Иванов Иван Иванович', orders).crmOrderNumber, '6_L');
+    assert.equal(findOrderContext('ФИО Иванов Иван Иванович', orders).crmOrderNumber, '6_L');
+    assert.equal(findOrderContext('Петрова Анна Сергеевна', orders).crmOrderNumber, '8_N');
+    assert.equal(findOrderContext('Анна Сергеевна Петрова', orders).crmOrderNumber, '8_N');
+  });
+
+  it('does not match an order by patronymic or wrong first name only', () => {
+    assert.equal(findOrderContext('Иванович', orders).lookupStatus, 'not_found');
+    assert.equal(findOrderContext('Иванов Сергей Петрович', orders).lookupStatus, 'not_found');
+    assert.equal(findOrderContext('Иван Иванов Анна', orders).lookupStatus, 'not_found');
+    assert.equal(findOrderContext('Иван Иван Петрович', orders).lookupStatus, 'not_found');
+  });
+
   it('finds an order by full recipient name without matching the first name inside a surname', () => {
     assert.equal(findOrderContext('Иванов Иван', orders).crmOrderNumber, '6_L');
     assert.equal(findOrderContext('Иванов Илья', orders).crmOrderNumber, '7_M');
@@ -689,6 +703,40 @@ describe('customer-style order lookup conversations', () => {
     assert.equal(second.action, 'answer');
     assert.equal(second.systemLookup.status, 'found');
     assert.match(second.answer, /Нашел заказ #8_N/);
+  });
+
+  it('answers order status by full name with patronymic after asking for an identifier', () => {
+    const first = handleCustomerMessage({
+      message: 'где мой заказ',
+      orders,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'ФИО Иванов Иван Иванович',
+      session: first.nextSession,
+      orders,
+    });
+
+    assert.equal(second.intent, 'order_status');
+    assert.equal(second.action, 'answer');
+    assert.equal(second.systemLookup.status, 'found');
+    assert.match(second.answer, /Нашел заказ #6_L/);
+    assert.doesNotMatch(second.answer, /Не нашел заказ/);
+    assert.doesNotMatch(second.answer, /Пришлите номер заказа/);
+  });
+
+  it('answers order status when customer starts with labeled full name and patronymic', () => {
+    const result = handleCustomerMessage({
+      message: 'ФИО Иванов Иван Иванович',
+      orders,
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'answer');
+    assert.equal(result.systemLookup.status, 'found');
+    assert.match(result.answer, /Нашел заказ #6_L/);
+    assert.doesNotMatch(result.answer, /Не нашел заказ/);
+    assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
   });
 
   it('answers order status by full Ivanov name instead of returning multiple matches', () => {

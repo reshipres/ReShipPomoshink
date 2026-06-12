@@ -63,6 +63,7 @@ export function looksLikeStandaloneOrderLookup(message = '') {
 
   const text = normalizeText(value);
   if (/^\d{3,8}r$/i.test(text)) return true;
+  if (looksLikeLabeledNameLookup(text)) return true;
 
   const words = value.split(/\s+/).filter(Boolean);
   const looksLikeFullName = words.length >= 2
@@ -70,6 +71,17 @@ export function looksLikeStandaloneOrderLookup(message = '') {
     && words.every((word) => /^[А-ЯЁA-Z][а-яёa-z-]{2,}$/u.test(word));
 
   return looksLikeFullName;
+}
+
+function looksLikeLabeledNameLookup(text) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const labels = new Set(['фио', 'фамилия', 'фамилии', 'получатель', 'получателя']);
+  if (!words.some((word) => labels.has(word))) return false;
+
+  const nameWords = words.filter((word) => !labels.has(word));
+  if (!nameWords.length || nameWords.length > 4) return false;
+
+  return nameWords.every((word) => /^[a-zа-я-]{2,}$/i.test(word));
 }
 
 export function looksLikeDeliveryDataPayload(message = '') {

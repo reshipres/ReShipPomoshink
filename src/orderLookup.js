@@ -103,8 +103,21 @@ function findNameMatches(query, orders) {
 
     if (!nameTokens.length) return false;
 
-    return words.every((word) => nameTokens.some((token) => nameTokenMatches(word, token)));
+    return nameWordsMatchOrder(words, nameTokens);
   });
+}
+
+function nameWordsMatchOrder(words, nameTokens) {
+  const matchedWords = words.filter((word) => nameTokens.some((token) => nameTokenMatches(word, token)));
+  const matchedTokens = new Set(matchedWords.map((word) => nameTokens.find((token) => nameTokenMatches(word, token))));
+
+  if (words.length === 1) return matchedWords.length === 1;
+  if (words.length === 2) return matchedWords.length === 2 && matchedTokens.size === 2;
+  if (matchedTokens.size < 2) return false;
+
+  return words
+    .filter((word) => !matchedWords.includes(word))
+    .every((word) => looksLikePatronymic(word));
 }
 
 function nameQueryWords(query) {
@@ -137,6 +150,10 @@ function nameQueryWords(query) {
 function nameTokenMatches(queryWord, nameToken) {
   if (queryWord === nameToken) return true;
   return queryWord.length >= 5 && nameToken.startsWith(queryWord);
+}
+
+function looksLikePatronymic(word) {
+  return /(?:вич|вна|ична|оглы|кызы)$/i.test(word);
 }
 
 function multipleOrderContext(matches) {
