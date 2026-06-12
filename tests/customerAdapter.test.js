@@ -1271,6 +1271,17 @@ describe('manual support routing', () => {
     assert.doesNotMatch(result.answer, /Я могу помочь с выбором товара, наличием/);
   });
 
+  it('hands off manual order recalculation requests', () => {
+    const result = handleCustomerMessage({
+      message: 'супер тогда могу оплачивать еще и наушники? только нужно посчитать разницу с рукавами вроде который мы отменили был дороже чем Pulsar Open Palm Long (Black, M)',
+    });
+
+    assert.equal(result.intent, 'order_change');
+    assert.equal(result.action, 'handoff_to_operator');
+    assert.equal(result.handoffReason, 'order_change');
+    assert.match(result.answer, /оператор|изменение заказа/i);
+  });
+
   it('hands off device defect symptoms even when customer describes them conversationally', () => {
     for (const message of [
       'Пришла недавно. Опять на такую же проблему наткнулся. Мышь прожимает пкм через 10 секунд автоматически. На 2 к+ начинаются микрофризы.',
@@ -1286,6 +1297,20 @@ describe('manual support routing', () => {
       assert.equal(result.handoffReason, 'defect_or_damage', message);
       assert.match(result.answer, /дефект|повреждение|оператор/i, message);
       assert.doesNotMatch(result.answer, /Каталог ReShip/, message);
+    }
+  });
+
+  it('keeps real service complaints in operator handoff', () => {
+    for (const message of [
+      'Я платил вам за доставку, почему СДЭК жалобу не принимает?',
+      'у меня жалоба на доставку',
+    ]) {
+      const result = handleCustomerMessage({ message });
+
+      assert.equal(result.intent, 'other', message);
+      assert.equal(result.action, 'handoff_to_operator', message);
+      assert.equal(result.handoffReason, 'angry_customer', message);
+      assert.match(result.answer, /оператор|вручную/i, message);
     }
   });
 
@@ -1739,12 +1764,18 @@ describe('customer-style product lookup conversations', () => {
       'И кстати на счёт Wlmouse как она в руке вообще приятные ощущения этого дизайна?',
       'А XM2w не будет зажимать безымянный палец и мизинец вместе?',
       'Мне нужно покрытие, чтоб чувствовалось как стертый ковер, будто болотный',
+      'Привет, стерлись глайды на мышке, на какие посоветуешь поменять(Logitech G Pro X Superlight)? Купил ESPTIGER ICE V2 и ощущения ужасные, как в болоте мышь. И какой ковер можешь посоветовать?',
+      'Спасибо большое! А насчет горба на G-Wolves были ли какие-то жалобы у пользователей или он не сильно ощущается?',
+      'Подскажите ещё, пожалуйста, по поводу Wlmouse ying75, на ней нельзя регулировать высоту срабатывания нажатия?',
+      'в интернете вообще не существует crazylight mini глайдов, подходит ли на обе версии или нет?',
+      'На vaxee pa почти то что надо, но после 5 дней юза постоянно либо недовожусь либо перевожусь через голову.',
     ]) {
       const result = handleCustomerMessage({ message });
 
       assert.equal(result.intent, 'product_advice', message);
       assert.equal(result.action, 'ask_clarifying_question', message);
       assert.match(result.answer, /speed\/control|грип|совместимость|модель|несколько похожих товаров/i, message);
+      assert.notEqual(result.handoffReason, 'angry_customer', message);
       assert.doesNotMatch(result.answer, /Я могу помочь с выбором товара, наличием/, message);
     }
   });

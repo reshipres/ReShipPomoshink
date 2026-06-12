@@ -135,7 +135,7 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.WARRANTY_OR_RETURN, 0.88);
   }
 
-  if (/(изменить|поменять|сменить|исправить|заменить|перенести).*(адрес|телефон|номер|получател|заказ|пвз|пункт выдачи|доставк|цвет|товар|модель|позици)|отменить заказ|отмена заказа|объединить заказ|добавить.*к заказ|давайте заменим|(?:давайте|можно|хочу|нужно|надо|тогда).{0,40}отмен(им|ить|яем|у)|отмен(им|ить|а|яем).{0,30}(заказ|позици|товар)/i.test(message)) {
+  if (messageLooksLikeOrderChange(message)) {
     return match(INTENTS.ORDER_CHANGE, 0.98);
   }
 
@@ -155,7 +155,7 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.REFUND_OR_RETURN, 0.96);
   }
 
-  if (/(ужас|обман|сколько можно|надоело|жалоб|отврат)/i.test(message)) {
+  if (messageLooksLikeAngryCustomer(message)) {
     return match(INTENTS.ANGRY_CUSTOMER, 0.94);
   }
 
@@ -250,6 +250,13 @@ export function classifyMessage(message, session = {}) {
 
 function match(intent, confidence, extras = {}) {
   return { intent, confidence, ...extras };
+}
+
+function messageLooksLikeOrderChange(message) {
+  return /(изменить|поменять|сменить|исправить|заменить|перенести).*(адрес|телефон|номер|получател|заказ|пвз|пункт выдачи|доставк|цвет|товар|модель|позици)|отменить заказ|отмена заказа|объединить заказ|добавить.*к заказ|давайте заменим|(?:давайте|можно|хочу|нужно|надо|тогда).{0,40}отмен(им|ить|яем|у)|отмен(им|ить|а|яем).{0,30}(заказ|позици|товар)/i.test(message)
+    || /(?:оплатить|оплачивать|добавить|дозаказать|докупи).{0,80}(?:ещ[её]|дополнительно|плюс).{0,80}(?:товар|позици|наушник|грип|ковр|мыш|клавиатур|рукав)/i.test(message)
+    || /(?:посчитать|рассчитать|считать).{0,50}(?:разниц|доплат|перерасч[её]т)/i.test(message)
+    || /(?:разниц|доплат).{0,80}(?:отменили|замен|оставляем|дороже|дешевле|позици|товар|заказ)|(?:оставляем|отменили|заменить).{0,80}(?:дороже|дешевле|разниц|доплат)/i.test(message);
 }
 
 function messageLooksLikeStartCommand(message) {
@@ -461,9 +468,26 @@ function extractPriceDetail(message) {
 }
 
 function messageLooksLikeProductAdvice(message) {
-  return (messageLooksLikeProductAlternativeQuestion(message) || messageLooksLikeCatalogBrowsingQuestion(message) || /(посовету|подскаж.*какой|что лучше|подойдет|подойд[её]т|совместим|размер|soft|xsoft|mid|speed|control|контрол|скорост|быстр(ее|ый|ая|ое)|медленн|скольж|стеклопад|грип|грипы|grip|свитч|switch|глайды|ковр|мышк|мышь|мыши|клавиатур|ощущени|дизайн|эргоном|зажим|пал(ец|ьц)|мизин|покрыти|болотн|ст[её]рт(ый|ого|ое).{0,30}ков|как.{0,40}в\s+руке|в\s+руке.{0,40}(лежит|ощущ|приятн)|отличи[ея]|отличаются|чем отличаются|надежн|надёжн|актуальн|есть смысл.{0,40}брать|для.{0,30}хват|пальцев(ый|ого)\s+хват|оригинал|копия)/i.test(message))
+  const productAdvicePattern = /(посовету|подскаж.*какой|что лучше|подходит?\s+ли|подойдет|подойд[её]т|совместим|размер|soft|xsoft|mid|speed|control|контрол|скорост|быстр(ее|ый|ая|ое)|медленн|скольж|стеклопад|грип|грипы|grip|свитч|switch|глайд|ковр|мышк|мышь|мыши|клавиатур|ощущени|дизайн|эргоном|горб|зажим|пал(ец|ьц)|мизин|покрыти|болотн|срабатыван|высот.{0,40}срабатыван|регулир.{0,40}срабатыван|верс(и[яиюе]|ии)|недовож|перевож|ст[её]рт(ый|ого|ое).{0,30}ков|как.{0,40}в\s+руке|в\s+руке.{0,40}(лежит|ощущ|приятн)|отличи[ея]|отличаются|чем отличаются|надежн|надёжн|актуальн|есть смысл.{0,40}брать|для.{0,30}хват|пальцев(ый|ого)\s+хват|оригинал|копия|жалоб[аы]?.{0,40}пользовател|пользовател.{0,40}жалоб)/i;
+
+  return (messageLooksLikeProductAlternativeQuestion(message) || messageLooksLikeCatalogBrowsingQuestion(message) || productAdvicePattern.test(message))
     && !messageLooksLikeAvailability(message)
     && !messageLooksLikePrice(message);
+}
+
+function messageLooksLikeAngryCustomer(message) {
+  const text = normalizeText(message);
+  if (!text) return false;
+
+  const isProductConsultation = messageLooksLikeProductAdvice(message);
+  const hasEscalationMarker = /(обман|сколько можно|надоело|отврат|претензи|суд|верните деньги|не отвеча|деньги)/i.test(text);
+  if (isProductConsultation && !hasEscalationMarker) return false;
+
+  return /(обман|сколько можно|надоело|отврат|претензи|суд)/i.test(text)
+    || /(ужасн|ужас).{0,40}(сервис|поддержк|обслуж|работа|доставк|отношени|магазин|сайт)|(?:сервис|поддержк|обслуж|магазин|сайт).{0,40}(ужасн|ужас|отврат)/i.test(text)
+    || /(?:у\s+меня|есть|хочу|буду).{0,30}жалоб[ауы]|жалоб[ау].{0,60}(?:на\s+вас|на\s+магазин|на\s+сервис|на\s+доставк|по\s+заказу|по\s+доставк)/i.test(text)
+    || /(?:остав|напиш|подам|буду|хочу|принима|принимаете).{0,50}жалоб|жалоб[ау].{0,80}(?:остав|напиш|подам|буду|хочу|принима|принимаете|сд[эе]к|cdek)|(?:сд[эе]к|cdek).{0,80}жалоб/i.test(text)
+    || /я\s+платил.{0,80}(вам|заказ|доставк).{0,80}(жалоб|претензи)|жалоб.{0,80}платил/i.test(text);
 }
 
 function messageLooksLikeCatalogBrowsingQuestion(message) {
