@@ -97,6 +97,39 @@ describe('new customer entry flow', () => {
   });
 });
 
+describe('safe closing replies', () => {
+  it('treats polite non-question follow-ups as acknowledgements', () => {
+    for (const message of [
+      'утро доброе, да, верно',
+      'благодарю, буду ждать',
+      'вас понял, извиняюсь за беспокойство, хорошего дня',
+      'уже написал туда, понял ожидаю',
+      'понял, ждать около месяца',
+      'огонь, появился, спасибо',
+    ]) {
+      const result = handleCustomerMessage({ message, orders, products });
+
+      assert.equal(result.intent, 'acknowledgement', message);
+      assert.equal(result.action, 'answer', message);
+      assert.equal(result.systemLookup, undefined, message);
+      assert.equal(result.needsHandoff, false, message);
+      assert.doesNotMatch(result.answer, /номер заказа|оператор|менеджер/i, message);
+    }
+  });
+
+  it('keeps question after thanks actionable', () => {
+    const result = handleCustomerMessage({
+      message: 'спасибо, а вопрос - сколько у вас их пришло?',
+      orders,
+      products,
+    });
+
+    assert.equal(result.intent, 'availability');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.doesNotMatch(result.answer, /Пожалуйста/);
+  });
+});
+
 describe('system order lookup', () => {
   it('finds an order by CDEK tracking number', () => {
     const order = findOrderContext('1234567890', orders);
