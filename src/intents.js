@@ -110,6 +110,10 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.PAYMENT, 0.86);
   }
 
+  if (messageLooksLikeWarrantyQuestion(message)) {
+    return match(INTENTS.WARRANTY_OR_RETURN, 0.88);
+  }
+
   if (/(изменить|поменять|сменить|исправить|заменить|перенести).*(адрес|телефон|номер|получател|заказ|пвз|пункт выдачи|доставк|цвет|товар|модель|позици)|отменить заказ|отмена заказа|объединить заказ|добавить.*к заказ|давайте заменим/i.test(message)) {
     return match(INTENTS.ORDER_CHANGE, 0.98);
   }
@@ -288,6 +292,8 @@ export function hasActionableRequest(message) {
     || messageLooksLikePickupQuestion(message)
     || messageLooksLikeAvailability(message)
     || messageLooksLikePrice(message)
+    || messageLooksLikeWarrantyQuestion(message)
+    || messageLooksLikeProductAlternativeQuestion(message)
     || messageLooksLikeProductAdvice(message)
     || messageLooksLikeHowToOrder(message)
     || messageLooksLikeDeliveryTerms(message)
@@ -309,6 +315,8 @@ export function messageLooksLikeOrder(message) {
 }
 
 function messageLooksLikeAvailability(message) {
+  if (messageLooksLikeWarrantyQuestion(message) || messageLooksLikeProductAlternativeQuestion(message)) return false;
+
   return /(в наличии|в нале|на складе|есть ли|есть\?|есть\s+(черн|бел|красн|син|розов|сер|фиолет|желт|зел|оранж)|какие\s+(цвета|расцветки)|какой\s+цвет|осталось|остаток|когда будет|появится|поступит|поступлен|поступлени|ожидается|ожидаете|поставка|завоз|дроп|предзаказ|под заказ|ресток|restock|доступен|можно заказать|будете завозить|привезете|привезёте)/i.test(message);
 }
 
@@ -370,9 +378,21 @@ function extractPriceDetail(message) {
 }
 
 function messageLooksLikeProductAdvice(message) {
-  return /(посовету|подскаж.*какой|что лучше|подойдет|совместим|размер|soft|xsoft|mid|свитч|switch|глайды|ковр|мышк|клавиатур)/i.test(message)
+  return (messageLooksLikeProductAlternativeQuestion(message) || /(посовету|подскаж.*какой|что лучше|подойдет|совместим|размер|soft|xsoft|mid|свитч|switch|глайды|ковр|мышк|клавиатур)/i.test(message))
     && !messageLooksLikeAvailability(message)
     && !messageLooksLikePrice(message);
+}
+
+function messageLooksLikeProductAlternativeQuestion(message) {
+  return /(аналог|аналоги|альтернатив|похож|похожие|вместо\s+(него|нее|неё|этого|этой)|замен[ау]|что\s+взять\s+вместо|что\s+можно\s+вместо)/i.test(message);
+}
+
+function messageLooksLikeWarrantyQuestion(message) {
+  if (/(хочу|нужно|надо|оформить|сделать|верните|вернуть|обменять).{0,40}(возврат|обмен|деньги|товар)/i.test(message)) {
+    return false;
+  }
+
+  return /(гарант|гарантий|гарантия).{0,40}(есть|будет|действует|сколько|какая|какие|можно|условия)?|(?:есть|какая|сколько|условия|правила).{0,30}(гарант|гарантия)|(?:условия|правила|как).{0,30}(возврат|обмен)|(?:возврат|обмен).{0,30}(есть|можно|условия|правила|сколько)/i.test(message);
 }
 
 function messageLooksLikeProductSearch(message) {

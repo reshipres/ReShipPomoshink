@@ -1223,6 +1223,60 @@ describe('customer-style product lookup conversations', () => {
     assert.doesNotMatch(second.answer, /Я могу проверить/);
   });
 
+  it('answers alternative follow-ups for the previously found product without repeating availability', () => {
+    const first = handleCustomerMessage({
+      message: 'beast mini',
+      products,
+    });
+
+    for (const message of ['есть аналоги?', 'что похожее есть?']) {
+      const result = handleCustomerMessage({
+        message,
+        session: first.nextSession,
+        products,
+      });
+
+      assert.equal(result.intent, 'product_advice');
+      assert.equal(result.action, 'answer');
+      assert.equal(result.systemLookup.status, 'found');
+      assert.match(result.answer, /WLmouse Beast X Mini/);
+      assert.match(result.answer, /аналогам/);
+      assert.doesNotMatch(result.answer, /Товар доступен под заказ/);
+      assert.doesNotMatch(result.answer, /Проверю наличие/);
+      assert.doesNotMatch(result.answer, /Я могу проверить/);
+    }
+  });
+
+  it('answers warranty questions without treating them as availability', () => {
+    const first = handleCustomerMessage({
+      message: 'beast mini',
+      products,
+    });
+
+    const warranty = handleCustomerMessage({
+      message: 'а гарантия есть?',
+      session: first.nextSession,
+      products,
+    });
+
+    const refund = handleCustomerMessage({
+      message: 'хочу вернуть товар',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(warranty.intent, 'warranty_or_return');
+    assert.equal(warranty.action, 'answer');
+    assert.equal(warranty.systemLookup, undefined);
+    assert.match(warranty.answer, /Гарантия/);
+    assert.doesNotMatch(warranty.answer, /Товар доступен под заказ/);
+    assert.doesNotMatch(warranty.answer, /Проверю наличие/);
+
+    assert.equal(refund.intent, 'warranty_or_return');
+    assert.equal(refund.action, 'handoff_to_operator');
+    assert.equal(refund.handoffReason, 'refund_or_return');
+  });
+
   it('answers order help with product context when model is in the same message', () => {
     const result = handleCustomerMessage({
       message: 'как заказать beast max?',

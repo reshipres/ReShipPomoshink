@@ -284,7 +284,7 @@ export function composeProductReviewAnswer(product) {
 export function composeProductAdviceAnswer(product) {
   const name = product?.name || 'этой модели';
 
-  return `По ${name} могу сориентировать по подбору, но нужно знать хват, размер руки и с чем сравниваете. Напишите эти данные одним сообщением; если нужна совместимость, моддинг или спорный выбор, передам оператору.`;
+  return `По ${name} могу сориентировать по подбору или аналогам, но нужно знать хват, размер руки, бюджет и с чем сравниваете. Напишите эти данные одним сообщением; если нужна совместимость, моддинг или спорный выбор, передам оператору.`;
 }
 
 export function composeProductOrderHelpAnswer(product) {

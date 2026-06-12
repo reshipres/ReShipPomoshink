@@ -47,6 +47,8 @@
   { "message": "какие расцветки есть?", "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "wlmouse beast max", "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "а отзывы есть", "intent": "review", "action": "answer" },
+  { "message": "есть аналоги?", "intent": "product_advice", "action": "ask_clarifying_question" },
+  { "message": "что похожее есть?", "intent": "product_advice", "action": "ask_clarifying_question" },
   { "message": "можно ссылку", "session": { "lastProductLookup": { "name": "WLmouse Beast Max Black", "slug": "wlmouse-beast-max-black" } }, "intent": "order_help", "action": "answer" },
   { "message": "а подойдет для claw grip", "session": { "lastProductLookup": { "name": "WLmouse Beast Max Black", "slug": "wlmouse-beast-max-black" } }, "intent": "product_advice", "action": "ask_clarifying_question" },
   { "message": "я не могу найти wlmouse beast на сайте", "intent": "product_search", "action": "ask_clarifying_question" },
@@ -69,6 +71,8 @@
   { "message": "почему деньги не возвращаются?", "intent": "payment", "action": "handoff_to_operator" },
   { "message": "а можете номер накладной прислать", "intent": "order_status", "action": "ask_clarifying_question" },
   { "message": "где отзывы оставлять можно?", "intent": "review", "action": "answer" },
+  { "message": "гарантия есть?", "intent": "warranty_or_return", "action": "answer" },
+  { "message": "хочу вернуть товар", "intent": "warranty_or_return", "action": "handoff_to_operator" },
   { "message": "самовывоз есть?", "intent": "pickup", "action": "answer" },
   { "message": "адрес самовывоза", "intent": "pickup", "action": "answer" }
 ]
