@@ -1272,15 +1272,21 @@ describe('manual support routing', () => {
   });
 
   it('hands off device defect symptoms even when customer describes them conversationally', () => {
-    const result = handleCustomerMessage({
-      message: 'Пришла недавно. Опять на такую же проблему наткнулся. Мышь прожимает пкм через 10 секунд автоматически. На 2 к+ начинаются микрофризы.',
-    });
+    for (const message of [
+      'Пришла недавно. Опять на такую же проблему наткнулся. Мышь прожимает пкм через 10 секунд автоматически. На 2 к+ начинаются микрофризы.',
+      'никакой замены нельзя сделать? микрик начал плохо функционировать, кнопка продавливается и плохо нажимается',
+      'на корпусе оставили маленькую часть пластика, цеплялся пальцем постоянно, не могу играть с дискомфортом',
+      'отчетливо слышен скрип, плохая четкость нажатия и продавливание кнопки, хочу заменить',
+      'колесо иногда не прокручивается',
+    ]) {
+      const result = handleCustomerMessage({ message });
 
-    assert.equal(result.intent, 'warranty_or_return');
-    assert.equal(result.action, 'handoff_to_operator');
-    assert.equal(result.handoffReason, 'defect_or_damage');
-    assert.match(result.answer, /дефект|повреждение|оператор/i);
-    assert.doesNotMatch(result.answer, /Каталог ReShip/);
+      assert.equal(result.intent, 'warranty_or_return', message);
+      assert.equal(result.action, 'handoff_to_operator', message);
+      assert.equal(result.handoffReason, 'defect_or_damage', message);
+      assert.match(result.answer, /дефект|повреждение|оператор/i, message);
+      assert.doesNotMatch(result.answer, /Каталог ReShip/, message);
+    }
   });
 
   it('hands off external marketplace and manual preorder requests with useful wording', () => {
@@ -1731,6 +1737,8 @@ describe('customer-style product lookup conversations', () => {
       'подскажите по скорости стеклопада',
       'какие грипы подходят?',
       'И кстати на счёт Wlmouse как она в руке вообще приятные ощущения этого дизайна?',
+      'А XM2w не будет зажимать безымянный палец и мизинец вместе?',
+      'Мне нужно покрытие, чтоб чувствовалось как стертый ковер, будто болотный',
     ]) {
       const result = handleCustomerMessage({ message });
 
