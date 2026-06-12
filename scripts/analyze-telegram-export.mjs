@@ -38,7 +38,10 @@ const intentCounts = {};
 const actionCounts = {};
 const handoffReasonCounts = {};
 const patternCounts = {};
+const otherPatternCounts = {};
 const patternExamples = {};
+const otherPatternExamples = {};
+const otherExamples = [];
 
 for (const chat of chats) {
   if (chat.type !== 'personal_chat') continue;
@@ -62,19 +65,35 @@ for (const chat of chats) {
 
     const result = handleMessage({ message: text, session });
     session = result.nextSession || {};
+    const isOther = result.intent === 'other';
 
     increment(intentCounts, result.intent);
     increment(actionCounts, result.action);
     increment(handoffReasonCounts, result.handoffReason || 'none');
 
+    if (includeExamples && isOther && otherExamples.length < exampleLimit) {
+      otherExamples.push(redact(text));
+    }
+
     for (const [name, matches] of patternRules) {
       if (!matches(text)) continue;
       increment(patternCounts, name);
+
+      if (isOther) {
+        increment(otherPatternCounts, name);
+      }
 
       if (includeExamples) {
         patternExamples[name] ||= [];
         if (patternExamples[name].length < exampleLimit) {
           patternExamples[name].push(redact(text));
+        }
+
+        if (isOther) {
+          otherPatternExamples[name] ||= [];
+          if (otherPatternExamples[name].length < exampleLimit) {
+            otherPatternExamples[name].push(redact(text));
+          }
         }
       }
     }
@@ -102,10 +121,15 @@ const report = {
   actions: sortObject(actionCounts),
   handoffReasons: sortObject(handoffReasonCounts),
   learnedPatterns: sortObject(patternCounts),
+  otherLearnedPatterns: sortObject(otherPatternCounts),
 };
 
 if (includeExamples) {
   report.redactedExamples = patternExamples;
+  report.redactedOtherExamples = {
+    other: otherExamples,
+    ...otherPatternExamples,
+  };
 }
 
 console.log(JSON.stringify(report, null, 2));

@@ -159,7 +159,7 @@ function routeDecision(classified, message, context) {
       ], classified.confidence);
 
     case INTENTS.ACKNOWLEDGEMENT:
-      return answer('acknowledgement', 'Пожалуйста. Могу еще помочь с товаром, доставкой, оплатой или заказом.', [
+      return answer('acknowledgement', 'Принял. Если понадобится, помогу с товаром, доставкой, оплатой или заказом.', [
         'Есть товар в наличии?',
         'Сколько доставка?',
         'Где мой заказ?',
