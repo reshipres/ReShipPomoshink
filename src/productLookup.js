@@ -117,7 +117,7 @@ function canonicalProductToken(token) {
   if (/^фиолет/i.test(token)) return 'purple';
   if (/^желт/i.test(token)) return 'yellow';
   if (/^зел/i.test(token)) return 'green';
-  if (/^оранж/i.test(token)) return 'orange';
+  if (/^(оранж|рыж)/i.test(token)) return 'orange';
 
   return token;
 }

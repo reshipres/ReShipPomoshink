@@ -1102,6 +1102,49 @@ describe('customer-style product lookup conversations', () => {
     assert.doesNotMatch(second.answer, /Не нашел товар/);
   });
 
+  it('extracts color from conversational variant follow-up', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    for (const message of ['давайте черную', 'если это версия v2, то давайте черную']) {
+      const result = handleCustomerMessage({
+        message,
+        session: first.nextSession,
+        products,
+      });
+
+      assert.equal(result.intent, 'availability', message);
+      assert.equal(result.action, 'answer', message);
+      assert.equal(result.systemLookup.status, 'found', message);
+      assert.match(result.answer, /WLmouse Beast Max Black/, message);
+      assert.match(result.answer, /В наличии 3 шт/, message);
+      assert.doesNotMatch(result.answer, /не нашел такой вариант/, message);
+      assert.doesNotMatch(result.answer, /Пришлите ссылку/, message);
+    }
+  });
+
+  it('treats orange color follow-up as a product variant request', () => {
+    const first = handleCustomerMessage({
+      message: 'wlmouse beast max есть?',
+      products,
+    });
+
+    const second = handleCustomerMessage({
+      message: 'а рыжий есть?',
+      session: first.nextSession,
+      products,
+    });
+
+    assert.equal(second.intent, 'availability');
+    assert.equal(second.action, 'ask_clarifying_question');
+    assert.equal(second.systemLookup.status, 'variant_not_found');
+    assert.match(second.answer, /WLmouse Beast Max Black/);
+    assert.match(second.answer, /не нашел такой вариант/);
+    assert.doesNotMatch(second.answer, /Пришлите ссылку/);
+  });
+
   it('answers available colors for the previously found product without asking for a link', () => {
     const first = handleCustomerMessage({
       message: 'wlmouse beast max есть?',

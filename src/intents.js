@@ -194,6 +194,10 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.ORDER_HELP, 0.9);
   }
 
+  if (session?.lastProductLookup && messageLooksLikeProductVariantSelection(message)) {
+    return match(INTENTS.AVAILABILITY, 0.88, { hint: message.trim() });
+  }
+
   if (messageLooksLikeAcknowledgement(message)) {
     return match(INTENTS.ACKNOWLEDGEMENT, 0.96);
   }
@@ -377,7 +381,7 @@ export function messageLooksLikeOrder(message) {
 function messageLooksLikeAvailability(message) {
   if (messageLooksLikeWarrantyQuestion(message) || messageLooksLikeProductAlternativeQuestion(message) || messageLooksLikeCatalogBrowsingQuestion(message)) return false;
 
-  return /(в наличии|в нале|на складе|есть ли|есть\?|есть\s+(черн|бел|красн|син|розов|сер|фиолет|желт|зел|оранж)|какие\s+(цвета|расцветки)|какой\s+цвет|осталось|остаток|когда будет|появится|поступит|поступлен|поступлени|ожидается|ожидаете|поставка|завоз|дроп|предзаказ|под заказ|ресток|restock|доступен|можно заказать|будете завозить|привезете|привезёте|сколько.{0,40}(пришло|имеется|осталось|штук)|(?:он|она|они|его|ее|её|их|товар|модель).{0,40}(есть|нету|нет).{0,30}(в итоге|у вас|на складе)?|(?:есть|нету|нет).{0,30}(в итоге).{0,40}(он|она|они|его|ее|её|их|товар|модель)?)/i.test(message);
+  return /(в наличии|в нале|на складе|есть ли|есть\?|есть.{0,30}(черн|бел|красн|син|розов|сер|фиолет|желт|зел|оранж|рыж)|(?:zero|зеро|mini|max|v\d+|модель|товар).{0,40}есть.{0,30}(черн|бел|красн|син|розов|сер|фиолет|желт|зел|оранж|рыж)|какие\s+(цвета|расцветки)|какой\s+цвет|осталось|остаток|когда будет|появится|поступит|поступлен|поступлени|ожидается|ожидаете|поставка|завоз|дроп|предзаказ|под заказ|ресток|restock|доступен|можно заказать|будете завозить|привезете|привезёте|сколько.{0,40}(пришло|имеется|осталось|штук)|(?:он|она|они|его|ее|её|их|товар|модель).{0,40}(есть|нету|нет).{0,30}(в итоге|у вас|на складе)?|(?:есть|нету|нет).{0,30}(в итоге).{0,40}(он|она|они|его|ее|её|их|товар|модель)?)/i.test(message);
 }
 
 function extractProductAvailabilityDetail(message) {
@@ -394,6 +398,10 @@ function messageLooksLikeHowToOrder(message) {
 
 function messageLooksLikeProductLinkFollowup(message) {
   return /(?:^|\s)(?:можно|дай|дайте|скинь|скиньте|пришлите|отправьте)?\s*(?:ссылк[ауи]|карточк[ауи])(?:\s|$|\?|\!|\.)/i.test(message);
+}
+
+function messageLooksLikeProductVariantSelection(message) {
+  return /(давайте|тогда|если|это|верс(ия|ии|ию)|вариант|цвет|нужн|возьму|беру).{0,80}(v\d+|mini|max|pro|черн|бел|красн|син|розов|фиолет|желт|зел|оранж|рыж|black|white|red|blue|pink|purple|yellow|green|orange)|(v\d+|mini|max|pro|черн|бел|красн|син|розов|фиолет|желт|зел|оранж|рыж|black|white|red|blue|pink|purple|yellow|green|orange).{0,80}(давайте|тогда|верс(ия|ии|ию)|вариант|цвет|нужн|возьму|беру)/i.test(message);
 }
 
 function messageLooksLikeDeliveryTerms(message) {

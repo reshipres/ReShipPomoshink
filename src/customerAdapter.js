@@ -95,6 +95,9 @@ function resolveProductContext(result, products, session) {
     const variantSummaryContext = resolveProductVariantSummaryContext(request.hint, session, products);
     if (variantSummaryContext) return variantSummaryContext;
 
+    const contextualVariant = resolveContextualProductVariant(request.hint, session, products);
+    if (contextualVariant) return contextualVariant;
+
     const productContext = findProductContext(request.hint, products);
     if (!productContext) return null;
 
@@ -135,9 +138,11 @@ function resolveContextualProductVariant(hint, session, products) {
   const brand = firstProductWord(baseProduct?.name);
   if (!brand) return null;
 
-  const productContext = findProductContext(`${brand} ${hint}`, products);
-  if (productContext?.lookupStatus !== 'not_found' && productContext?.lookupStatus !== 'multiple') {
-    return productContext;
+  for (const variantHint of contextualVariantHints(hint)) {
+    const productContext = findProductContext(`${brand} ${variantHint}`, products);
+    if (productContext?.lookupStatus !== 'not_found' && productContext?.lookupStatus !== 'multiple') {
+      return productContext;
+    }
   }
 
   return null;
@@ -373,11 +378,41 @@ function messageLooksLikeProductVariantSummary(message) {
 }
 
 function messageLooksLikeProductVariantFollowup(message) {
-  return /(цвет|друг(ой|ая|ое)|черн|бел|красн|син|розов|фиолет|желт|зел|оранж|black|white|red|blue|pink|purple|yellow|green|orange)/i.test(message);
+  return /(цвет|друг(ой|ая|ое)|верс(ия|ии|ию)|v\d+|mini|max|черн|бел|красн|син|розов|фиолет|желт|зел|оранж|рыж|black|white|red|blue|pink|purple|yellow|green|orange)/i.test(message);
 }
 
 function firstProductWord(value) {
   return String(value || '').trim().split(/\s+/).find(Boolean) || null;
+}
+
+function contextualVariantHints(message) {
+  const value = String(message || '').trim();
+  const hints = [value];
+
+  const normalized = value.toLowerCase();
+  const colorMap = [
+    [/черн/i, 'black'],
+    [/бел/i, 'white'],
+    [/красн/i, 'red'],
+    [/син/i, 'blue'],
+    [/розов/i, 'pink'],
+    [/фиолет/i, 'purple'],
+    [/желт/i, 'yellow'],
+    [/зел/i, 'green'],
+    [/(оранж|рыж)/i, 'orange'],
+  ];
+
+  for (const [pattern, color] of colorMap) {
+    if (pattern.test(normalized)) hints.push(color);
+  }
+
+  const latinColors = normalized.match(/\b(black|white|red|blue|pink|purple|yellow|green|orange)\b/g) || [];
+  hints.push(...latinColors);
+
+  const versionMatches = normalized.match(/\b(v\d+|mini|max|pro)\b/g) || [];
+  hints.push(...versionMatches);
+
+  return [...new Set(hints.filter(Boolean))];
 }
 
 function messageLooksLikeOrderFollowup(message) {

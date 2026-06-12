@@ -97,6 +97,7 @@
   { "message": "будете завозить новый дроп wlmouse?", "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "когда поступит?", "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "какие расцветки есть?", "intent": "availability", "action": "ask_clarifying_question" },
+  { "message": "зеро есть, рыжий?", "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "wlmouse beast max", "intent": "availability", "action": "ask_clarifying_question" },
   { "message": "а отзывы есть", "intent": "review", "action": "answer" },
   { "message": "есть аналоги?", "intent": "product_advice", "action": "ask_clarifying_question" },
