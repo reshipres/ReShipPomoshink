@@ -10,6 +10,8 @@
 npm test
 npm run eval
 npm run analyze:telegram -- /Users/davidbukarov/Downloads/DataExport_2026-06-11.zip
+npm run learn:report
+npm run learn:report -- --json
 npm run chat
 npm run chat -- --anonymous
 npm run chat -- --hybrid
@@ -24,6 +26,7 @@ npm run chat -- --hybrid --learn
 - `src/llmFallback.js` - контракт fallback-модели: строгий JSON, mock-клиент и проверка безопасности решения.
 - `src/supportFacts.js` - RAG-lite факты ReShip, которыми ограничивается fallback.
 - `src/learningLogger.js` - редактированный JSONL inbox для аналитики и будущего обучения сценариев.
+- `src/learningReport.js` - отчет по learning inbox: группирует `other`, low-confidence, handoff и расхождения LLM/сценария в backlog правил.
 - `src/orderLookup.js` - поиск заказа по номеру, CRM-номеру, треку CDEK, телефону, фамилии или известному клиенту.
 - `src/productLookup.js` - поиск товара по ссылке, slug, названию модели и алиасам.
 - `src/intents.js` - детерминированная классификация фраз.
@@ -79,6 +82,14 @@ const result = await handleHybridCustomerMessage({
 4. Если `needsHandoff === true`, создать тикет или позвать оператора.
 
 Для гибридной интеграции шаги те же, но вызывайте `handleHybridCustomerMessage` и сохраняйте `result.analyticsEvent`. Если включен `learning.enabled`, кандидаты для обучения пишутся в `learning/inbox/*.jsonl`; этот каталог игнорируется git.
+
+Цикл самообучения сценарного слоя:
+
+1. Запустить бота в гибридном режиме с `learning.enabled`.
+2. Накопить локальные события в `learning/inbox/*.jsonl`; в них хранится редактированный текст и метаданные intent/confidence/handoff/outcome, без телефонов, email, ссылок и номеров заказов.
+3. Выполнить `npm run learn:report` или `npm run learn:report -- --json`.
+4. Взять повторяющиеся группы из `Rule backlog` и `LLM transitions`, вручную решить: новое правило, новая фикстура, новый support fact или корректный handoff оператору.
+5. Добавлять в код только обобщенное правило и синтетическую фразу, не реальные клиентские сообщения.
 
 `handleMessage` остается доступен для низкоуровневых тестов и кастомной интеграции, где внешний код сам подтягивает `orderContext` или `productContext`.
 

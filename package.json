@@ -8,6 +8,7 @@
     "test": "node --test",
     "eval": "node scripts/evaluate-fixtures.mjs",
     "analyze:telegram": "node scripts/analyze-telegram-export.mjs",
+    "learn:report": "node scripts/report-learning-inbox.mjs",
     "chat": "node scripts/chat.mjs"
   },
   "engines": {
