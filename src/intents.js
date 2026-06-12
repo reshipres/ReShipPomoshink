@@ -90,6 +90,10 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.DELIVERY_DATA, 0.96);
   }
 
+  if (messageLooksLikeDeliveryPolicyQuestion(message)) {
+    return match(INTENTS.DELIVERY_TERMS, 0.9);
+  }
+
   if (orderDetail && (orderDetail !== 'delivery_timing' || messageCanUseOrderDetailContext(message, session))) {
     const hint = extractOrderHint(message);
     return match(INTENTS.ORDER_STATUS, 0.9, {
@@ -220,7 +224,7 @@ function classifyGeneralTopicReply(text) {
     return INTENTS.PRICE_DISCOUNT;
   }
 
-  if (/^(доставка|сроки|срок доставки|сколько доставка|курьер|сдэк|cdek)$/i.test(text)) {
+  if (/^(доставка|сроки|срок доставки|сколько доставка|курьер|сдэк|cdek|способы доставки|типы доставки|тип доставки|отправка)$/i.test(text)) {
     return INTENTS.DELIVERY_TERMS;
   }
 
@@ -292,6 +296,8 @@ export function hasActionableRequest(message) {
 
 export function messageLooksLikeOrder(message) {
   if (messageLooksLikeAvailability(message) || messageLooksLikePrice(message) || messageLooksLikeProductAdvice(message)) return false;
+  if (messageLooksLikeDeliveryPolicyQuestion(message)) return false;
+
   return Boolean(extractOrderHint(message))
     || hasPhoneNumber(message)
     || /(заказ|статус|трек|трек-?номер|накладн|сдэк|cdek|достав|где.*посыл|едет|отправ|когда.*приед|когда.*получ|когда.*отправ)/i.test(message);
@@ -319,8 +325,22 @@ function messageLooksLikeProductLinkFollowup(message) {
 
 function messageLooksLikeDeliveryTerms(message) {
   if (extractOrderHint(message)) return false;
-  return /(сколько.*(достав|ид[её]т|ехать|ждать|времени|дней)|через сколько|в течени[еи] какого|как долго|долго.*ждать|срок.*(достав|отправ|предзаказ|ожидан)|сроки|будет идти|доставка.*сколько|стоим.*достав|цена.*достав|тариф.*сдэк|доставк[аи].*(москв|росси|регион|город|курьер|пвз))/i.test(message)
+  return /(сколько.*(достав|ид[её]т|ехать|ждать|времени|дней)|через сколько|в течени[еи] какого|как долго|долго.*ждать|срок.*(достав|отправ|предзаказ|ожидан)|сроки|будет идти|доставка.*сколько|стоим.*достав|цена.*достав|тариф.*сдэк|доставк[аи].*(москв|росси|регион|город|курьер|пвз)|(?:способ|способы|тип|типы|вариант|варианты).{0,40}достав|доставк[аи].{0,40}(способ|способы|тип|типы|вариант|варианты)|как.{0,40}(доставк|отправк|отправляете|отправить)|(?:чем|как).{0,30}(отправляете|доставляете)|курьер.{0,30}пвз|пвз.{0,30}курьер)/i.test(message)
     && !/(мой|моего|моем|(^|\s)заказ($|\s)|трек|статус)/i.test(message);
+}
+
+function messageLooksLikeDeliveryPolicyQuestion(message) {
+  const text = normalizeText(message);
+  if (!text || extractOrderHint(message) || messageMentionsOrderContext(message)) return false;
+  if (!messageLooksLikeDeliveryTerms(message)) return false;
+
+  return /\bу\s+вас\b/i.test(text)
+    || /^(привет|здравствуй|здравствуйте|добрый день|добрый вечер|доброе утро)\b/i.test(text)
+    || /(?:способ|способы|тип|типы|вариант|варианты).{0,40}достав/i.test(text)
+    || /доставк[аи].{0,40}(?:способ|способы|тип|типы|вариант|варианты)/i.test(text)
+    || /как.{0,40}(?:доставк|отправк|отправляете|отправить)/i.test(text)
+    || /(?:чем|как).{0,30}(?:отправляете|доставляете)/i.test(text)
+    || /курьер.{0,30}пвз|пвз.{0,30}курьер/i.test(text);
 }
 
 function messageLooksLikePrice(message) {

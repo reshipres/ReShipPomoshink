@@ -777,6 +777,36 @@ describe('customer-style order lookup conversations', () => {
     assert.doesNotMatch(second.answer, /Пришлите номер заказа/);
   });
 
+  it('answers general delivery questions without reusing the previous order', () => {
+    const first = handleCustomerMessage({
+      message: '6_L',
+      orders,
+    });
+
+    for (const message of [
+      'а какие у вас сроки доставки?',
+      'какие есть способы доставки?',
+      'типы доставок',
+      'как отправка делается?',
+    ]) {
+      const result = handleCustomerMessage({
+        message,
+        session: first.nextSession,
+        orders,
+      });
+
+      assert.equal(result.intent, 'delivery_terms');
+      assert.equal(result.action, 'answer');
+      assert.equal(result.systemLookup, undefined);
+      assert.match(result.answer, /CDEK/);
+      assert.match(result.answer, /пункта выдачи/);
+      assert.match(result.answer, /курьером/);
+      assert.doesNotMatch(result.answer, /#6_L/);
+      assert.doesNotMatch(result.answer, /Нашел заказ/);
+      assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
+    }
+  });
+
   it('answers short timing and shipping follow-ups from the previously found order', () => {
     const first = handleCustomerMessage({
       message: '1234567890',

@@ -205,7 +205,7 @@
         "expect": {
           "intent": "delivery_terms",
           "action": "answer",
-          "answerIncludes": ["Срок зависит от города"],
+          "answerIncludes": ["CDEK", "пункта выдачи", "курьером"],
           "answerExcludes": ["Пришлите номер заказа"]
         }
       }
