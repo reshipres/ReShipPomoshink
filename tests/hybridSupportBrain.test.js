@@ -132,6 +132,40 @@ describe('hybrid support brain', () => {
     }
   });
 
+  it('writes all hybrid dialog analytics separately from learning candidates', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'reship-analytics-'));
+
+    try {
+      const result = await handleHybridCustomerMessage({
+        message: 'доставка в москву',
+        source: 'test',
+        analytics: {
+          enabled: true,
+          dir,
+          date: '2026-06-12',
+        },
+      });
+      const raw = await readFile(join(dir, '2026-06-12.jsonl'), 'utf8');
+      const event = JSON.parse(raw.trim());
+
+      assert.equal(result.intent, 'delivery_terms');
+      assert.equal(result.action, 'answer');
+      assert.equal(result.analyticsLog.status, 'written');
+      assert.equal(result.learningLog.status, 'disabled');
+      assert.equal(event.source, 'test');
+      assert.equal(event.redactedMessage, 'доставка в москву');
+      assert.equal(event.deterministic.intent, 'delivery_terms');
+      assert.equal(event.final.intent, 'delivery_terms');
+      assert.equal(event.final.confidence > 0.7, true);
+      assert.equal(event.final.needsHandoff, false);
+      assert.equal(event.outcome, 'answered');
+      assert.equal(event.llmFallback.status, 'not_requested');
+      assert.equal(event.needsReview, false);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('uses LLM fallback only for uncertain deterministic results', () => {
     assert.equal(shouldUseLlmFallback({ intent: 'delivery_terms', confidence: 0.9 }), false);
     assert.equal(shouldUseLlmFallback({ intent: 'other', confidence: 0.45 }), true);

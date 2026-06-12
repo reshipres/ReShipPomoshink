@@ -1,6 +1,11 @@
 import { handleCustomerMessage } from './customerAdapter.js';
 import { isSafeLlmDecision, runLlmFallback } from './llmFallback.js';
-import { appendLearningEvent, buildAnalyticsEvent, shouldLogForLearning } from './learningLogger.js';
+import {
+  appendAnalyticsEvent,
+  appendLearningEvent,
+  buildAnalyticsEvent,
+  shouldLogForLearning,
+} from './learningLogger.js';
 import { retrieveSupportFacts } from './supportFacts.js';
 
 export async function handleHybridCustomerMessage({
@@ -10,6 +15,7 @@ export async function handleHybridCustomerMessage({
   orders = [],
   products = [],
   llm = {},
+  analytics = {},
   learning = {},
   source = 'unknown',
 } = {}) {
@@ -41,6 +47,10 @@ export async function handleHybridCustomerMessage({
     facts,
     source,
   });
+  const analyticsLog = await maybeWriteAnalyticsEvent({
+    analyticsEvent,
+    analytics,
+  });
   const learningLog = await maybeWriteLearningEvent({
     analyticsEvent,
     deterministicResult,
@@ -54,6 +64,7 @@ export async function handleHybridCustomerMessage({
     llmFallback,
     supportFacts: facts,
     analyticsEvent,
+    analyticsLog,
     learningLog,
   };
 }
@@ -164,6 +175,22 @@ async function maybeWriteLearningEvent({
   return appendLearningEvent(analyticsEvent, {
     dir: learning.dir || 'learning/inbox',
     date: learning.date,
+  });
+}
+
+async function maybeWriteAnalyticsEvent({
+  analyticsEvent,
+  analytics,
+}) {
+  if (!analytics.enabled) {
+    return {
+      status: 'disabled',
+    };
+  }
+
+  return appendAnalyticsEvent(analyticsEvent, {
+    dir: analytics.dir || 'learning/events',
+    date: analytics.date,
   });
 }
 

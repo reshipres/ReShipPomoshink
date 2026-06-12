@@ -11,3 +11,5 @@ exports/
 imports/
 learning/inbox/*.jsonl
 learning/inbox/*.ndjson
+learning/events/*.jsonl
+learning/events/*.ndjson

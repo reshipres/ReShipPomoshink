@@ -8,6 +8,7 @@ const products = JSON.parse(readFileSync(new URL('../fixtures/system-products.js
 const anonymousMode = process.argv.includes('--anonymous');
 const hybridMode = process.argv.includes('--hybrid');
 const learningMode = process.argv.includes('--learn');
+const analyticsMode = process.argv.includes('--analytics');
 const customer = anonymousMode ? {} : {
   id: 'customer-ivanov',
   telegramId: 'tg-ivanov',
@@ -20,9 +21,11 @@ console.log(anonymousMode
   ? 'ReShipPomoshink CLI. Анонимный клиент: ищу заказы и товары только по введенным данным. Ctrl+C для выхода.'
   : 'ReShipPomoshink CLI. Известный клиент: могу сам найти последний заказ, также ищу заказы и товары по введенным данным. Ctrl+C для выхода.');
 if (hybridMode) {
-  console.log(learningMode
-    ? 'Hybrid mode: mock LLM включен, learning inbox пишет кандидатов в learning/inbox.'
-    : 'Hybrid mode: mock LLM включен в shadow-режиме, без записи learning inbox.');
+  const logs = [
+    learningMode ? 'learning inbox пишет кандидатов в learning/inbox' : 'learning inbox выключен',
+    analyticsMode ? 'analytics пишет все диалоги в learning/events' : 'analytics выключен',
+  ];
+  console.log(`Hybrid mode: mock LLM включен в shadow-режиме, ${logs.join(', ')}.`);
 }
 
 if (!input.isTTY) {
@@ -63,6 +66,9 @@ async function respond(message) {
       source: 'cli',
       learning: {
         enabled: learningMode,
+      },
+      analytics: {
+        enabled: analyticsMode,
       },
     })
     : handleCustomerMessage({ message, session, customer, orders, products });

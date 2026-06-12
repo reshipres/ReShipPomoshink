@@ -16,6 +16,7 @@ npm run chat
 npm run chat -- --anonymous
 npm run chat -- --hybrid
 npm run chat -- --hybrid --learn
+npm run chat -- --hybrid --analytics
 ```
 
 ## Как устроено
@@ -25,7 +26,7 @@ npm run chat -- --hybrid --learn
 - `src/hybridSupportBrain.js` - гибридная обертка: сценарный слой остается главным, mock LLM включается только на неуверенных/сложных сообщениях.
 - `src/llmFallback.js` - контракт fallback-модели: строгий JSON, mock-клиент и проверка безопасности решения.
 - `src/supportFacts.js` - RAG-lite факты ReShip, которыми ограничивается fallback.
-- `src/learningLogger.js` - редактированный JSONL inbox для аналитики и будущего обучения сценариев.
+- `src/learningLogger.js` - редактированные JSONL-события для analytics-журнала и learning inbox.
 - `src/learningReport.js` - отчет по learning inbox: группирует `other`, low-confidence, handoff и расхождения LLM/сценария в backlog правил.
 - `src/orderLookup.js` - поиск заказа по номеру, CRM-номеру, треку CDEK, телефону, фамилии или известному клиенту.
 - `src/productLookup.js` - поиск товара по ссылке, slug, названию модели и алиасам.
@@ -68,6 +69,7 @@ const result = await handleHybridCustomerMessage({
   orders,
   products,
   source: 'telegram',
+  analytics: { enabled: true },
   learning: { enabled: true },
 });
 ```
@@ -81,13 +83,13 @@ const result = await handleHybridCustomerMessage({
 3. Показать `result.answer` клиенту.
 4. Если `needsHandoff === true`, создать тикет или позвать оператора.
 
-Для гибридной интеграции шаги те же, но вызывайте `handleHybridCustomerMessage` и сохраняйте `result.analyticsEvent`. Если включен `learning.enabled`, кандидаты для обучения пишутся в `learning/inbox/*.jsonl`; этот каталог игнорируется git.
+Для гибридной интеграции шаги те же, но вызывайте `handleHybridCustomerMessage` и сохраняйте `result.analyticsEvent`. Если включен `analytics.enabled`, каждый диалог пишется в `learning/events/*.jsonl`. Если включен `learning.enabled`, кандидаты для обучения пишутся в `learning/inbox/*.jsonl`. Оба каталога игнорируются git.
 
 Цикл самообучения сценарного слоя:
 
-1. Запустить бота в гибридном режиме с `learning.enabled`.
-2. Накопить локальные события в `learning/inbox/*.jsonl`; в них хранится редактированный текст и метаданные intent/confidence/handoff/outcome, без телефонов, email, ссылок и номеров заказов.
-3. Выполнить `npm run learn:report` или `npm run learn:report -- --json`.
+1. Запустить бота в гибридном режиме с `analytics.enabled` и `learning.enabled`.
+2. Накопить полный журнал в `learning/events/*.jsonl` и кандидатов правил в `learning/inbox/*.jsonl`; в них хранится редактированный текст и метаданные intent/confidence/handoff/outcome, без телефонов, email, ссылок и номеров заказов.
+3. Выполнить `npm run learn:report` или `npm run learn:report -- --json`. Для полного analytics-журнала можно указать каталог: `npm run learn:report -- learning/events`.
 4. Взять повторяющиеся группы из `Rule backlog` и `LLM transitions`, вручную решить: новое правило, новая фикстура, новый support fact или корректный handoff оператору.
 5. Добавлять в код только обобщенное правило и синтетическую фразу, не реальные клиентские сообщения.
 

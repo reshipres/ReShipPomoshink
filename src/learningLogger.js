@@ -38,6 +38,17 @@ export async function appendLearningEvent(event, {
   dir = 'learning/inbox',
   date = eventDate(event?.timestamp),
 } = {}) {
+  return appendJsonlEvent(event, { dir, date });
+}
+
+export async function appendAnalyticsEvent(event, {
+  dir = 'learning/events',
+  date = eventDate(event?.timestamp),
+} = {}) {
+  return appendJsonlEvent(event, { dir, date });
+}
+
+async function appendJsonlEvent(event, { dir, date }) {
   await mkdir(dir, { recursive: true });
   const filePath = join(dir, `${date}.jsonl`);
   await appendFile(filePath, `${JSON.stringify(event)}\n`, 'utf8');
