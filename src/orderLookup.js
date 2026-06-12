@@ -42,6 +42,10 @@ function findExactIdentifierMatches(query, orders) {
     const exactTextMatch = identifiers.some((identifier) => normalizeIdentifier(identifier) === normalizedHint);
     if (exactTextMatch) return true;
 
+    if (digits.length >= 3 && digits.length <= 8 && orderCodeNumbers(order).includes(digits)) {
+      return true;
+    }
+
     if (digits.length < 7) return false;
 
     const phoneDigits = normalizeDigits(order.recipientPhone || '');
@@ -50,6 +54,17 @@ function findExactIdentifierMatches(query, orders) {
     return Boolean(phoneDigits && phoneDigits.endsWith(digits.slice(-10)))
       || Boolean(trackingDigits && trackingDigits === digits);
   });
+}
+
+function orderCodeNumbers(order) {
+  return [
+    order.crmOrderNumber,
+    order.shortId,
+    order.orderId,
+  ]
+    .map(normalizeIdentifier)
+    .map((identifier) => identifier.match(/^(\d{3,8})[a-z]{1,4}$/i)?.[1] || null)
+    .filter(Boolean);
 }
 
 function findCustomerOrders(customer, orders) {

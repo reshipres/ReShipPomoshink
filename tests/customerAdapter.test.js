@@ -122,6 +122,33 @@ describe('system order lookup', () => {
     assert.equal(findOrderContext('8Н', orders).crmOrderNumber, '8_N');
   });
 
+  it('finds a long CRM order by numeric part without guessing duplicates', () => {
+    const longCrmOrders = [
+      ...orders,
+      syntheticOrder({
+        crmOrderNumber: '4213R',
+        shortId: '4213R',
+        orderNumber: 'RS-20260612-4213R',
+        recipientFullName: 'Сергей Смирнов',
+        recipientLastName: 'Смирнов',
+      }),
+    ];
+    const duplicateLongCrmOrders = [
+      ...longCrmOrders,
+      syntheticOrder({
+        crmOrderNumber: '4213K',
+        shortId: '4213K',
+        orderNumber: 'RS-20260613-4213K',
+        recipientFullName: 'Олег Соколов',
+        recipientLastName: 'Соколов',
+      }),
+    ];
+
+    assert.equal(findOrderContext('4213', longCrmOrders).crmOrderNumber, '4213R');
+    assert.equal(findOrderContext('заказ 4213', longCrmOrders).crmOrderNumber, '4213R');
+    assert.equal(findOrderContext('4213', duplicateLongCrmOrders).lookupStatus, 'multiple');
+  });
+
   it('finds an order by phone number', () => {
     const order = findOrderContext('+7 999 123 45 67', orders);
 
@@ -185,6 +212,18 @@ describe('system order lookup', () => {
     assert.equal(order.crmOrderNumber, '7_M');
   });
 });
+
+function syntheticOrder(overrides = {}) {
+  return {
+    status: 'processing',
+    deliveryMethod: 'CDEK_PVZ',
+    customerId: `customer-${overrides.crmOrderNumber || 'synthetic'}`,
+    recipientPhone: '+7 900 000 00 00',
+    createdAt: '2026-06-12T10:00:00.000Z',
+    updatedAt: '2026-06-12T12:00:00.000Z',
+    ...overrides,
+  };
+}
 
 describe('system product lookup', () => {
   it('finds a product by public product URL', () => {
@@ -593,6 +632,60 @@ describe('customer-style order lookup conversations', () => {
       assert.match(result.answer, /Нашел заказ #6_L/);
       assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
     }
+  });
+
+  it('answers order status when customer sends only the numeric part of a long CRM number', () => {
+    const longCrmOrders = [
+      ...orders,
+      syntheticOrder({
+        crmOrderNumber: '4213R',
+        shortId: '4213R',
+        orderNumber: 'RS-20260612-4213R',
+        recipientFullName: 'Сергей Смирнов',
+        recipientLastName: 'Смирнов',
+      }),
+    ];
+
+    const result = handleCustomerMessage({
+      message: '4213',
+      orders: longCrmOrders,
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'answer');
+    assert.equal(result.systemLookup.status, 'found');
+    assert.match(result.answer, /Нашел заказ #4213R/);
+    assert.doesNotMatch(result.answer, /Пришлите номер заказа/);
+  });
+
+  it('asks for exact order when numeric CRM part matches multiple suffixes', () => {
+    const duplicateLongCrmOrders = [
+      ...orders,
+      syntheticOrder({
+        crmOrderNumber: '4213R',
+        shortId: '4213R',
+        orderNumber: 'RS-20260612-4213R',
+        recipientFullName: 'Сергей Смирнов',
+        recipientLastName: 'Смирнов',
+      }),
+      syntheticOrder({
+        crmOrderNumber: '4213K',
+        shortId: '4213K',
+        orderNumber: 'RS-20260613-4213K',
+        recipientFullName: 'Олег Соколов',
+        recipientLastName: 'Соколов',
+      }),
+    ];
+
+    const result = handleCustomerMessage({
+      message: '4213',
+      orders: duplicateLongCrmOrders,
+    });
+
+    assert.equal(result.intent, 'order_status');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.equal(result.systemLookup.status, 'multiple');
+    assert.match(result.answer, /несколько похожих заказов/);
   });
 
   it('does not confuse a CDEK tracking question with delivery data', () => {
