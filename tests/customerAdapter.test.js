@@ -1114,6 +1114,7 @@ describe('manual support routing', () => {
       'письмо с подтверждением не пришло',
       'И она почему то в корзину не добавляется.',
       'Ваш сайт почему то мои предыдущие покупки не показывает',
+      'А, с десктопной версии не показывает почему-то',
     ]) {
       const result = handleCustomerMessage({ message });
 
@@ -1130,6 +1131,8 @@ describe('manual support routing', () => {
       'сообщите пожалуйста в телеграм',
       'обещали сегодня, но ничего не пришло',
       'не пришли еще? уже месяц жду',
+      'не пришли еще? уже май заканчивается',
+      'Слишком долгое ожидание',
     ]) {
       const result = handleCustomerMessage({ message });
 
@@ -1151,6 +1154,54 @@ describe('manual support routing', () => {
     assert.equal(result.contextRequest.type, 'general');
     assert.match(result.answer, /Напишите вопрос одним сообщением/);
     assert.doesNotMatch(result.answer, /Где мой заказ/);
+  });
+
+  it('asks for context when customer only says they cannot find something', () => {
+    const result = handleCustomerMessage({
+      message: 'Я просто не могу найти',
+    });
+
+    assert.equal(result.intent, 'general_help');
+    assert.equal(result.action, 'ask_clarifying_question');
+    assert.equal(result.contextRequest.type, 'general');
+    assert.match(result.answer, /товар|наличие|доставк|заказ/i);
+    assert.doesNotMatch(result.answer, /Я могу помочь с выбором товара, наличием/);
+  });
+
+  it('hands off terse payment capture complaints', () => {
+    const result = handleCustomerMessage({
+      message: 'Деньги сняло',
+    });
+
+    assert.equal(result.intent, 'payment');
+    assert.equal(result.action, 'handoff_to_operator');
+    assert.equal(result.handoffReason, 'billing_issue');
+    assert.match(result.answer, /проверили платеж/i);
+    assert.doesNotMatch(result.answer, /Я могу помочь с выбором товара, наличием/);
+  });
+
+  it('hands off cancellation phrased as a conversational follow-up', () => {
+    const result = handleCustomerMessage({
+      message: 'Так и не смог найти чем бы заменить. Давайте тогда отменим.',
+    });
+
+    assert.equal(result.intent, 'order_change');
+    assert.equal(result.action, 'handoff_to_operator');
+    assert.equal(result.handoffReason, 'order_change');
+    assert.match(result.answer, /оператор|изменение заказа/i);
+    assert.doesNotMatch(result.answer, /Я могу помочь с выбором товара, наличием/);
+  });
+
+  it('hands off device defect symptoms even when customer describes them conversationally', () => {
+    const result = handleCustomerMessage({
+      message: 'Пришла недавно. Опять на такую же проблему наткнулся. Мышь прожимает пкм через 10 секунд автоматически. На 2 к+ начинаются микрофризы.',
+    });
+
+    assert.equal(result.intent, 'warranty_or_return');
+    assert.equal(result.action, 'handoff_to_operator');
+    assert.equal(result.handoffReason, 'defect_or_damage');
+    assert.match(result.answer, /дефект|повреждение|оператор/i);
+    assert.doesNotMatch(result.answer, /Каталог ReShip/);
   });
 
   it('hands off external marketplace and manual preorder requests with useful wording', () => {
