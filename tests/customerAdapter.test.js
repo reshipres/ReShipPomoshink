@@ -13,7 +13,7 @@ const products = JSON.parse(readFileSync(new URL('../fixtures/system-products.js
 
 describe('new customer entry flow', () => {
   it('greets newcomers without assuming they already have an order', () => {
-    for (const message of ['привет', '/start', 'я первый раз', 'впервые', 'как у вас все работает?']) {
+    for (const message of ['привет', '/start', 'я первый раз', 'впервые', 'как у вас все работает?', 'как это работает?', 'что такое ReShip?', 'вы магазин?']) {
       const result = handleCustomerMessage({
         message,
         customer: {},
@@ -26,6 +26,7 @@ describe('new customer entry flow', () => {
       assert.equal(result.systemLookup, undefined);
       assert.match(result.answer, /впервые у нас/);
       assert.match(result.answer, /выбрать товар/);
+      assert.match(result.answer, /reship\.pro/);
       assert.match(result.answer, /доставк/);
       assert.match(result.answer, /Если заказ уже есть/);
       assert.match(result.answer, /email/);
@@ -65,6 +66,16 @@ describe('new customer entry flow', () => {
         message: 'хочу посмотреть товары',
         intent: 'product_advice',
         includes: /проверю наличие и цену/,
+      },
+      {
+        message: 'где каталог?',
+        intent: 'product_advice',
+        includes: /https:\/\/reship\.pro/,
+      },
+      {
+        message: 'сайт есть?',
+        intent: 'product_advice',
+        includes: /https:\/\/reship\.pro/,
       },
     ];
 
@@ -689,16 +700,18 @@ describe('customer-style order lookup conversations', () => {
   });
 
   it('does not confuse a CDEK tracking question with delivery data', () => {
-    const result = handleCustomerMessage({
-      message: 'что с сдэк 1234567890',
-      orders,
-    });
+    for (const message of ['сдэк 1234567890', 'что с сдэк 1234567890']) {
+      const result = handleCustomerMessage({
+        message,
+        orders,
+      });
 
-    assert.equal(result.intent, 'order_status');
-    assert.equal(result.action, 'answer');
-    assert.equal(result.systemLookup.status, 'found');
-    assert.match(result.answer, /Нашел заказ #6_L/);
-    assert.doesNotMatch(result.answer, /данные доставки/);
+      assert.equal(result.intent, 'order_status', message);
+      assert.equal(result.action, 'answer', message);
+      assert.equal(result.systemLookup.status, 'found', message);
+      assert.match(result.answer, /Нашел заказ #6_L/, message);
+      assert.doesNotMatch(result.answer, /данные доставки/, message);
+    }
   });
 
   it('hands off when customer says tracking does not update', () => {
@@ -1006,6 +1019,10 @@ describe('customer-style order lookup conversations', () => {
       'типы доставок',
       'как отправка делается?',
       'отправляете по России?',
+      'доставка по РФ есть?',
+      'СДЭК по России?',
+      'можно заказать в другой город?',
+      'вы работаете по России?',
       'можно в регион?',
       'куда вы отправляете?',
     ]) {
