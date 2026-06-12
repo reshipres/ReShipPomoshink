@@ -60,6 +60,10 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.GENERAL_HELP, 0.82);
   }
 
+  if (!actionable && messageLooksLikeConfusion(message)) {
+    return match(INTENTS.GENERAL_HELP, 0.78);
+  }
+
   if (!actionable && messageLooksLikeNewcomerEntry(message)) {
     return match(INTENTS.GREETING, 0.94);
   }
@@ -474,6 +478,9 @@ function messageLooksLikeAcknowledgement(message) {
 
   if (/^(вопросов\s+нет|спасибо).{0,80}(закажу|подумаю|напишу|отпишусь|ожидаю|буду\s+ждать|хорошего\s+дня|хорошего\s+вечера)/i.test(text)) return true;
   if (/^(все|да|пон|понял|увидел|хорошо|отлично|пока\s+не\s+надо).{0,50}(понял|верно|спасибо|благодарю|жду|ожидаю|буду\s+ждать|помощь|ответ|информаци)/i.test(text)) return true;
+  if (/^(а\s+)?я\s+понял[а]?(?:\s|$)/i.test(text)) return true;
+  if (/^(спасибо|благодарю).{0,80}(еще|ещё|очень\s+жду|жду|хорошего|с\s+праздником)/i.test(text)) return true;
+  if (/^(хорошо|ладно|окей|ок).{0,80}(тогда\s+)?(закажу|в\s+следующий\s+раз|с\s+праздником|спасибо)/i.test(text)) return true;
   if (/^(сейчас|ща|секунду|минуту|минуточку).{0,60}(гляну|посмотрю|проверю|напишу|отпишусь|чиркану|скину|пришлю)?$/i.test(text)) return true;
   if (/^(ок|окей|оке|хорошо|ладно).{0,60}(сейчас|щас|ща|гляну|посмотрю|проверю|напишу|отпишусь|чиркану|понял|поняла)/i.test(text)) return true;
   if (/^(так\s+)?все\s+(же\s+)?(ок|окей|хорошо|понял|понятно)/i.test(text)) return true;
@@ -486,11 +493,15 @@ function messageLooksLikeAttentionPing(message) {
   if (!text) return /^[?!().\s]+$/.test(String(message || ''));
 
   return /^[?!]+$/.test(String(message || '').trim())
-    || /^(ау|алло|ало|вы тут|есть кто|ну что|ну что там|что там|есть новости|есть апдейт|уточнили|ответили|не забыли)(?:\s*[?!.)]*)?$/i.test(text);
+    || /^(а\s+)?(ау|алло|ало|вы тут|есть кто|ну что|ну что там|что там|как там|что по итогу|что в итоге|есть новости|есть апдейт|уточнили|ответили|не забыли)(?:\s*[?!.)]*)?$/i.test(text);
 }
 
 function messageLooksLikeGeneralHelp(message) {
   return /((можете|сможете|можно).{0,30}(подсказать|сказать|уточнить)|хотел(ось)?\s+(узнать|спросить|уточнить)|есть вопрос|вопрос по)/i.test(message);
+}
+
+function messageLooksLikeConfusion(message) {
+  return /(последнее|выше|предыдущее|прошлое).{0,30}(не\s+понял|не\s+поняла|непонятно)|^(не\s+понял[а]?|не\s+понятно|непонятно)(?:\s|$)/i.test(message);
 }
 
 function messageLooksLikeNewcomerEntry(message) {

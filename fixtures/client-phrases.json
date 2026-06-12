@@ -24,6 +24,10 @@
   { "message": "пока не надо, спасибо", "intent": "acknowledgement", "action": "answer" },
   { "message": "спасибо за помощь", "intent": "acknowledgement", "action": "answer" },
   { "message": "спасибо огромное", "intent": "acknowledgement", "action": "answer" },
+  { "message": "спасибо еще раз, очень жду", "intent": "acknowledgement", "action": "answer" },
+  { "message": "хорошо, тогда закажу в следующий раз", "intent": "acknowledgement", "action": "answer" },
+  { "message": "хорошо, с праздником", "intent": "acknowledgement", "action": "answer" },
+  { "message": "а, я понял", "intent": "acknowledgement", "action": "answer" },
   { "message": "секунду", "intent": "acknowledgement", "action": "answer" },
   { "message": "сейчас", "intent": "acknowledgement", "action": "answer" },
   { "message": "сейчас гляну", "intent": "acknowledgement", "action": "answer" },
@@ -63,6 +67,8 @@
   { "message": "жду ответа уже второй день", "intent": "human_requested", "action": "handoff_to_operator" },
   { "message": "?", "intent": "human_requested", "action": "handoff_to_operator" },
   { "message": "ну что там?", "intent": "human_requested", "action": "handoff_to_operator" },
+  { "message": "а что там?", "intent": "human_requested", "action": "handoff_to_operator" },
+  { "message": "что по итогу?", "intent": "human_requested", "action": "handoff_to_operator" },
   { "message": "вы тут?", "intent": "human_requested", "action": "handoff_to_operator" },
   { "message": "уточнили?", "intent": "human_requested", "action": "handoff_to_operator" },
   { "message": "хочу поменять адрес доставки", "intent": "order_change", "action": "handoff_to_operator" },
@@ -129,5 +135,6 @@
   { "message": "самовывоз есть?", "intent": "pickup", "action": "answer" },
   { "message": "адрес самовывоза", "intent": "pickup", "action": "answer" },
   { "message": "гончарная сегодня работает?", "intent": "pickup", "action": "answer" },
-  { "message": "можно завтра подъехать?", "intent": "pickup", "action": "answer" }
+  { "message": "можно завтра подъехать?", "intent": "pickup", "action": "answer" },
+  { "message": "последнее не понял", "intent": "general_help", "action": "ask_clarifying_question" }
 ]
