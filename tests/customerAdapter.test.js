@@ -1927,12 +1927,39 @@ describe('customer-style product lookup conversations', () => {
     assert.equal(warranty.action, 'answer');
     assert.equal(warranty.systemLookup, undefined);
     assert.match(warranty.answer, /Гарантия/);
+    assert.match(warranty.answer, /точный срок по модели/);
     assert.doesNotMatch(warranty.answer, /Товар доступен под заказ/);
     assert.doesNotMatch(warranty.answer, /Проверю наличие/);
 
     assert.equal(refund.intent, 'warranty_or_return');
     assert.equal(refund.action, 'handoff_to_operator');
     assert.equal(refund.handoffReason, 'refund_or_return');
+  });
+
+  it('hands off manufacturer warranty and specific return-condition cases', () => {
+    for (const message of [
+      'почему гарантия 1 год если у производителя 4 года?',
+      'как воспользоваться гарантией производителя?',
+    ]) {
+      const result = handleCustomerMessage({ message, products });
+
+      assert.equal(result.intent, 'warranty_or_return', message);
+      assert.equal(result.action, 'handoff_to_operator', message);
+      assert.equal(result.handoffReason, 'manufacturer_warranty_review', message);
+      assert.match(result.answer, /оператор|производител/i, message);
+      assert.doesNotMatch(result.answer, /Проверю наличие/, message);
+    }
+
+    const returnCase = handleCustomerMessage({
+      message: 'если проверю микрики и не сниму пленки, можно вернуть?',
+      products,
+    });
+
+    assert.equal(returnCase.intent, 'warranty_or_return');
+    assert.equal(returnCase.action, 'handoff_to_operator');
+    assert.equal(returnCase.handoffReason, 'refund_or_return');
+    assert.match(returnCase.answer, /Возврат после проверки/);
+    assert.doesNotMatch(returnCase.answer, /Проверю наличие/);
   });
 
   it('answers order help with product context when model is in the same message', () => {

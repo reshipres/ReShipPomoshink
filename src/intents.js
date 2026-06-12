@@ -148,6 +148,14 @@ export function classifyMessage(message, session = {}) {
     return match(INTENTS.PAYMENT, 0.86);
   }
 
+  if (messageLooksLikeManufacturerWarrantyReview(message)) {
+    return match(INTENTS.REFUND_OR_RETURN, 0.94, { detail: 'manufacturer_warranty' });
+  }
+
+  if (messageLooksLikeReturnReviewCase(message)) {
+    return match(INTENTS.REFUND_OR_RETURN, 0.94, { detail: 'return_condition_review' });
+  }
+
   if (messageLooksLikeWarrantyQuestion(message)) {
     return match(INTENTS.WARRANTY_OR_RETURN, 0.88);
   }
@@ -548,6 +556,17 @@ function messageLooksLikeWarrantyQuestion(message) {
   }
 
   return /(гарант|гарантий|гарантия).{0,40}(есть|будет|действует|сколько|какая|какие|можно|условия)?|(?:есть|какая|сколько|условия|правила).{0,30}(гарант|гарантия)|(?:условия|правила|как).{0,30}(возврат|обмен)|(?:возврат|обмен).{0,30}(есть|можно|условия|правила|сколько)/i.test(message);
+}
+
+function messageLooksLikeManufacturerWarrantyReview(message) {
+  return /(?:производител|официальн|офиц).{0,80}гарант|гарант.{0,80}(?:производител|официальн|офиц)|почему.{0,80}гарант.{0,80}(?:год|лет|меньше|больше)/i.test(message);
+}
+
+function messageLooksLikeReturnReviewCase(message) {
+  const returnQuestion = /(?:можно|смогу|получится|возможно).{0,80}вернуть|вернуть.{0,80}(?:можно|смогу|получится|возможно)|не\s+понрав.{0,80}вернуть|вернуть.{0,80}не\s+понрав/i.test(message);
+  const usageOrPackagingDetail = /(провер|тест|пользов|распак|откр(о|ы)|вскро|пленк|глайд|микрик|клик|сохран|упаковк|коробк|товарн)/i.test(message);
+
+  return returnQuestion && usageOrPackagingDetail;
 }
 
 function messageLooksLikeDeviceDefect(message) {
